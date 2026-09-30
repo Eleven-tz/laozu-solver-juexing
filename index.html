@@ -2598,8 +2598,8 @@ async function doSolve(){
           if(st.score>L.curScore){L.curScore=st.score;L.curSnap=snapshot(st);L.lastImprove=performance.now();}
           if(st.score>bestScore){
             bestScore=st.score;bestSnap=snapshot(st);bestDirty=true;bestLi=li;
-            // 即时广播：显著提升(>0.3%)才通知其他线，15%概率跳过去+扰动，避免频繁打断
-            for(let oj=0; oj<N_LINES; oj++){
+            // 独立搜索：禁用广播，3线零交流保多样性
+            if(false) for(let oj=0; oj<N_LINES; oj++){
               if(oj===li) continue;
               const OL=lines[oj];
               const gainRatio=(bestScore-OL.curScore)/Math.max(1,Math.abs(OL.curScore));
@@ -2617,8 +2617,8 @@ async function doSolve(){
         iters++;
       }
     }
-    // 末位淘汰：每10秒，最差线若落后>2%且10秒无进步，从最优点+扰动重启
-    if(now-lastCull>10000){
+    // 独立搜索：禁用末位淘汰
+    if(false && now-lastCull>10000){
       lastCull=now;
       let worstLi=0;
       for(let li=1; li<N_LINES; li++) if(lines[li].curScore<lines[worstLi].curScore) worstLi=li;

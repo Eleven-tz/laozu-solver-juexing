@@ -4,43 +4,18 @@
 // 常量
 const DE=10000, A_ATK=2001, A_DEF=2002, A_HP=2003, A_ATKP=2004, A_DEFP=2005, A_HPP=2006;
 const FILL_BONUS=1e7;
-const ATTRS=[{id:2001,name:"攻击力"},{id:2002,name:"防御"},{id:2003,name:"生命值"},{id:2004,name:"攻击力百分比"},{id:2005,name:"防御百分比"},{id:2006,name:"生命值百分比"}];
 
 // 全局数据（由主线程传入）
+// ATTRS 必须由主线程传入完整版（含 kind/nPower 共 12 项），Worker 内不手写残缺版
 let SKILL_BY_ID = {};
 let AWAKEN_DB = {};
+let ATTRS = [];
 
 // mulberry32
 function mulberry32(a){return function(){a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296;};}
 
-// buildTalentMap
-function buildTalentMap(ids){
-  const m={},seen=new Set(),conv={2004:2001,2005:2002,2006:2003};
-  for(const id of ids){if(!id||seen.has(String(id)))continue;seen.add(String(id));
-    const t=TALENT_BY_ID[id];if(!t)continue;const ba=conv[t.attr];if(!ba)continue;
-    (m[t.form]??={})[ba]=((m[t.form]??={})[ba]??0)+t.value;}
-  return m;
-}
-
-// effBase
-function effBase(eq,starsMap,talentMap,attr,awakenMap){
-  const b=eq.base.find(x=>x.attr===attr),bv=b?b.value:0;let o=0;
-  // 原版逻辑：仅 quality===5 且有 elder 数据的红装吃星级加成，按装备 ID 查星级
-  const stars=starsMap?(starsMap[eq.id]??0):0;
-  if(eq.quality===5&&eq.elder&&eq.elder.starBonus&&stars>0){let s=0;for(const [th,v] of eq.elder.starBonus)if(th<=stars)s=v;o+=s/DE;}
-  o+=((talentMap[eq.weaponForm]||{})[attr]??0)/DE;
-  // 觉醒：自身全部基础属性提升（按觉醒等级查，1/2/3级累积）
-  const awLv=awakenMap?(awakenMap[eq.id]??0):0;
-  const awData=AWAKEN_DB[eq.id];
-  if(awData){
-    for(let lv=1;lv<=3&&lv<=awLv;lv++){
-      const effs=awData.levels[lv];
-      if(!effs)continue;
-      for(const ef of effs)if(ef.type==="self_mult")o+=ef.pct/DE;
-    }
-  }
-  return o>0?Math.floor(bv*(1+o)):bv;
-}
+// 优化目标：与主线程一致
+const objective=(r,target)=>target==="weighted"?r.weightedTotal:r.powerTotal;
 
 // evaluate
 function evaluate(pl,ctx,detail){
@@ -152,6 +127,31 @@ function newSolverState(instances,table,R,C,locked,ctx){
     uidToInst:new Map(instances.map(i=>[i.uid,i])),
     score:-Infinity,
   };
+}
+
+function buildOcc(pl,R,C,locked){
+  const occ=new Int16Array(R*C).fill(-1);
+  for(const i of locked)occ[i]=-2;
+  pl.forEach((p,pi)=>{for(const c of p.cells)occ[c]=pi;});
+  return occ;
+}
+function cellsFree(cells,occ){for(const i of cells)if(occ[i]!==-1)return false;return true;}
+
+function placeInst(st,uid,pm){
+  // pm: {r,c,cells}
+  const inst=st.uidToInst.get(uid);
+  const occ=buildOcc(st.pl,st.R,st.C,st.locked);
+  if(!cellsFree(pm.cells,occ))return false;
+  st.pl.push({inst,eq:inst.eq,tier:inst.tier,r:pm.r,c:pm.c,cells:pm.cells});
+  st.unplaced.delete(uid);
+  return true;
+}
+function removeInst(st,uid){
+  const idx=st.pl.findIndex(p=>p.inst.uid===uid);
+  if(idx<0)return null;
+  const[p]=st.pl.splice(idx,1);
+  st.unplaced.add(uid);
+  return p; // 返回被移除的放置（含原位置）
 }
 
 // snapshot
@@ -311,67 +311,40 @@ function pickOp(ops,rng){
   for(const o of ops){x-=o.w;if(x<=0)return o.fn;}
   return ops[0].fn;
 }
-
-// Worker 主逻辑：单线退火
-function runSingleLine(job) {
-  const {instances, ctx, budget, seed, tempMult} = job;
-  SKILL_BY_ID = job.skillById;
-  AWAKEN_DB = job.awakenDb;
-  
+// 单轮搜索：完全独立的 rng/st/ops，独立温度曲线
+// 只通过 shared 跨轮共享全局最优（bestScore/bestSnap），不共享任何可变状态
+function runRound(job, roundIdx, roundMs, shared) {
+  const {instances, ctx, seed, tempMult} = job;
   const R = ctx.R, C = ctx.C;
   const locked = new Set(ctx.locked);
-  const rng = mulberry32(seed >>> 0);
-  
-  // 构建摆放表
+  const rng = mulberry32((seed + roundIdx * 104729) >>> 0);
+
   const table = buildPlacementTable(instances, R, C, locked);
-  
-  // 初始状态
   const st = newSolverState(instances, table, R, C, locked, ctx);
   const ops = makeOperators(st, rng);
   greedyPlaceAll(st, instances.map(i => i.uid), rng);
   st.score = stateScore(st);
-  
-  let bestScore = st.score;
-  let bestSnap = snapshot(st);
-  let curScore = st.score;
-  
-  // 温度
+
+  // 本轮温度按本轮初始分计算（与主线程单轮逻辑一致）
   const cells0 = st.pl.reduce((a,p) => a + p.cells.length, 0);
-  const tb0 = ctx.fillAll ? curScore - cells0 * FILL_BONUS : curScore;
+  const tb0 = ctx.fillAll ? st.score - cells0 * FILL_BONUS : st.score;
   const T0 = Math.max(1, Math.abs(tb0) * 0.03 * tempMult);
   const T1 = Math.max(1e-9, Math.abs(tb0) * 1e-3 * tempMult);
-  
+
   const t0 = performance.now();
-  const end = t0 + budget * 1000;
+  const end = t0 + roundMs;
   let iters = 0;
-  let lastRestart = t0;
-  let restartCount = 0;
-  
+  let curScore = st.score;
+  if (st.score > shared.bestScore) {
+    shared.bestScore = st.score;
+    shared.bestSnap = snapshot(st);
+  }
+
   while (performance.now() < end) {
     const now = performance.now();
-    const frac = Math.min(1, (now - t0) / (budget * 1000));
+    const frac = Math.min(1, (now - t0) / roundMs);
     const T = T0 * Math.pow(T1 / T0, frac);
-    
-    // 定时重启：每15秒从新起点开始（保留全局最优）
-    if (now - lastRestart > 15000) {
-      lastRestart = now;
-      restartCount++;
-      const newRng = mulberry32((seed + restartCount * 104729) >>> 0);
-      const newSt = newSolverState(instances, table, R, C, locked, ctx);
-      const newOps = makeOperators(newSt, newRng);
-      greedyPlaceAll(newSt, instances.map(i => i.uid), newRng);
-      newSt.score = stateScore(newSt);
-      // 替换当前状态（保留 bestScore/bestSnap）
-      st.pl = newSt.pl;
-      st.unplaced = newSt.unplaced;
-      st.score = newSt.score;
-      curScore = newSt.score;
-      // 注意：ops 引用了旧 st，需要重建
-      // 简化：直接替换 ops 数组内容
-      ops.length = 0;
-      ops.push(...newOps);
-    }
-    
+
     const batchUntil = performance.now() + 23;
     while (performance.now() < batchUntil && performance.now() < end) {
       iters++;
@@ -383,9 +356,9 @@ function runSingleLine(job) {
       if (delta >= 0 || rng() < Math.exp(delta / T)) {
         // 接受
         if (st.score > curScore) curScore = st.score;
-        if (st.score > bestScore) {
-          bestScore = st.score;
-          bestSnap = snapshot(st);
+        if (st.score > shared.bestScore) {
+          shared.bestScore = st.score;
+          shared.bestSnap = snapshot(st);
         }
       } else {
         // 拒绝，回滚
@@ -393,15 +366,43 @@ function runSingleLine(job) {
         st.score = before;
       }
     }
-    
-    // 发送进度
-    if (iters % 5000 === 0) {
-      postMessage({type: 'progress', iters, bestScore});
+
+    // 节流进度汇报（约2秒一次）
+    if (now - shared.lastProg > 2000) {
+      shared.lastProg = now;
+      postMessage({type: 'progress', iters: shared.iters + iters, bestScore: shared.bestScore, round: roundIdx + 1});
     }
   }
-  
-  return {bestScore, bestSnap, iters};
+
+  shared.iters += iters;
 }
+
+// Worker 主逻辑：单线退火，多轮独立搜索
+// 每 15 秒开一轮全新的搜索（新种子、新贪心起点、新温度曲线），全局最优跨轮保留
+function runSingleLine(job) {
+  SKILL_BY_ID = job.skillById;
+  AWAKEN_DB = job.awakenDb;
+  ATTRS = job.attrs;
+  if (!ATTRS || !ATTRS.length) throw new Error('Worker 缺少 ATTRS（主线程未传入完整属性表）');
+
+  const ROUND_MS = 15000;
+  const budgetMs = job.budget * 1000;
+  const t0 = performance.now();
+  const shared = {bestScore: -Infinity, bestSnap: [], iters: 0, lastProg: 0};
+
+  let round = 0;
+  while (performance.now() - t0 < budgetMs) {
+    const remain = budgetMs - (performance.now() - t0);
+    const roundMs = Math.min(ROUND_MS, remain);
+    if (roundMs < 500) break; // 剩余太短就不开新轮了
+    runRound(job, round, roundMs, shared);
+    round++;
+  }
+
+  return {bestScore: shared.bestScore, bestSnap: shared.bestSnap, iters: shared.iters, rounds: round};
+}
+
+
 
 onmessage = function(e) {
   const job = e.data;

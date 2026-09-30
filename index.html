@@ -2583,42 +2583,49 @@ async function doSolve(){
   const skillById = SKILL_BY_ID;
   const awakenDb = AWAKEN_DB;
   
+  let progTimer = null;
   const workerResults = await new Promise((resolve, reject) => {
     const results = [];
     let doneCount = 0;
     let totalIters = 0;
     const workers = [];
-    
+    const killAll = () => { for (const w of workers) { try { w.terminate(); } catch (e) {} } };
+    let failed = false;
+    const failAll = (msg) => {
+      if (failed) return;
+      failed = true;
+      killAll();
+      reject(new Error(msg));
+    };
+
     for (let wi = 0; wi < N_WORKERS; wi++) {
       const worker = new Worker('solver-worker.js');
       workers.push(worker);
-      
+
       worker.onmessage = (e) => {
         const msg = e.data;
         if (msg.type === 'progress') {
-          // 更新进度（简单平均）
-          totalIters += 0; // 避免重复计算
+          // 进度条走时间动画，这里只记轮次（避免重复计算 iters）
+          if (msg.round) totalIters = totalIters; // 占位：真实 iters 在 done 里汇总
         } else if (msg.type === 'done') {
           results[wi] = msg;
           doneCount++;
-          log(`Worker ${wi+1} 完成：最优 ${Math.round(msg.bestScore).toLocaleString()}，${msg.iters.toLocaleString()} 次迭代`);
+          log(`Worker ${wi+1} 完成：最优 ${Math.round(msg.bestScore).toLocaleString()}，${msg.iters.toLocaleString()} 次迭代，${msg.rounds || 1} 轮`);
           worker.terminate();
           if (doneCount === N_WORKERS) {
             resolve(results);
           }
         } else if (msg.type === 'error') {
           log(`Worker ${wi+1} 出错：${msg.message}`);
-          worker.terminate();
-          reject(new Error(msg.message));
+          failAll(msg.message);
         }
       };
-      
+
       worker.onerror = (err) => {
-        log(`Worker ${wi+1} 加载失败，回退到单线程`);
-        worker.terminate();
-        reject(err);
+        log(`Worker ${wi+1} 加载失败：${err.message || err.type || '未知错误'}`);
+        failAll(err.message || 'Worker 加载失败');
       };
-      
+
       // 发送任务
       worker.postMessage({
         type: 'solve',
@@ -2629,24 +2636,23 @@ async function doSolve(){
         tempMult: TEMP_MULTS[wi],
         skillById: skillById,
         awakenDb: awakenDb,
+        attrs: ATTRS, // 完整属性表（含 kind/nPower），Worker 计分用
       });
     }
-    
-    // 进度条动画（Worker运行时）
-    const progTimer = setInterval(() => {
+
+    // 进度条动画（Worker运行时，按时间走）
+    progTimer = setInterval(() => {
       const elapsed = (performance.now() - t0) / 1000;
       const pct = Math.min(99, (elapsed / budget) * 100);
       $("progBar").style.width = pct + "%";
     }, 500);
-    // 完成后清除
-    const origResolve = resolve;
-    resolve = (r) => { clearInterval(progTimer); origResolve(r); };
   }).catch(err => {
     log(`Workers 失败：${err.message}，请刷新重试`);
     solving = false; $("btnSolve").disabled = false;
     return null;
   });
-  
+  clearInterval(progTimer);
+
   if (!workerResults) return;
   
   // 取最优

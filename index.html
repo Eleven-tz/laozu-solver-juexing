@@ -2481,6 +2481,19 @@ function makeOperators(st,rng){
       removeInst(st,p.inst.uid);
       return()=>{placeInst(st,p.inst.uid,pm0);};
     }},
+    {w:12,fn:()=>{ // bigShuffle：LNS大拆，拿下 6-8 件重排（跳出局部最优）
+      if(st.pl.length<6)return null;
+      const snap=snapshot(st);
+      const n=6+((rng()*Math.min(3,st.pl.length-6))|0);
+      const idxs=new Set();
+      while(idxs.size<n)idxs.add((rng()*st.pl.length)|0);
+      const removedUids=[...idxs].map(i=>st.pl[i].inst.uid);
+      for(const uid of removedUids)removeInst(st,uid);
+      const toPlace=[...removedUids,...st.unplaced];
+      for(let i=toPlace.length-1;i>0;i--){const j=(rng()*(i+1))|0;[toPlace[i],toPlace[j]]=[toPlace[j],toPlace[i]];}
+      greedyPlaceAll(st,toPlace,rng);
+      return()=>{restore(st,snap);};
+    }},
     {w:15,fn:()=>{ // shuffle：拿下 2-4 件，重排它们+未放的
       if(st.pl.length<2)return null;
       const snap=snapshot(st);
@@ -2541,7 +2554,7 @@ async function doSolve(){
   const table=buildPlacementTable(instances,R,C,locked);
 
   // === 多线并行退火：3条线同时跑，共享全局最优 ===
-  const N_LINES=5;
+  const N_LINES=3;
   const lines=[];
   for(let li=0; li<N_LINES; li++){
     const rngL=mulberry32(((S.seed>>>0)+li*7919+13)>>>0);
@@ -2554,10 +2567,10 @@ async function doSolve(){
   let bestLi=0;
   for(let li=1; li<N_LINES; li++) if(lines[li].curScore>lines[bestLi].curScore) bestLi=li;
   let bestSnap=lines[bestLi].curSnap, bestScore=lines[bestLi].curScore;
-  log(`初始贪心(5线)：最优 ${fmtN(S.fillAll?bestScore-lines[bestLi].st.pl.reduce((a,p)=>a+p.cells.length,0)*FILL_BONUS:bestScore)}`);
+  log(`初始贪心(3线)：最优 ${fmtN(S.fillAll?bestScore-lines[bestLi].st.pl.reduce((a,p)=>a+p.cells.length,0)*FILL_BONUS:bestScore)}`);
 
   // 并行回火：5条线不同温度，0号冷(精耕)、4号热(探索)
-  const TEMP_MULT=[0.5,0.75,1.0,1.5,2.0];
+  const TEMP_MULT=[0.7,1.0,1.6]; // 3线：冷/中/热
   for(let li=0; li<N_LINES; li++){
     const L=lines[li];
     const cells0=L.st.pl.reduce((a,p)=>a+p.cells.length,0);
@@ -2574,7 +2587,7 @@ async function doSolve(){
     // 轮询每条线，各跑一个小批量（70ms/3 ≈ 每线23ms）
     for(let li=0; li<N_LINES; li++){
       const L=lines[li], st=L.st, rngL=L.rng, opsL=L.ops;
-      const T=L.T0*Math.pow(L.T1/L.T0,frac), batchUntil=performance.now()+14;
+      const T=L.T0*Math.pow(L.T1/L.T0,frac), batchUntil=performance.now()+23;
       while(performance.now()<batchUntil&&performance.now()<end){
         const before=st.score;
         const undo=pickOp(opsL,rngL)();
@@ -2623,7 +2636,7 @@ async function doSolve(){
       const livePl=plFromSnap(bestSnap);
       if(livePl.length){
         renderResult(livePl,evaluate(livePl,ctx,false),R,C,locked);
-        $("resMeta").textContent+=" · 🔄求解中(5线)";
+        $("resMeta").textContent+=" · 🔄求解中(3线)";
       }
     }
     await sleep(0);

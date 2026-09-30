@@ -1960,7 +1960,7 @@ if(cats.length>200){const p=document.createElement("p");p.className="muted";p.te
 }
 function addSelected(name,tier,qty){
 const ex=S.selected.find(s=>s.name===name&&s.tier===tier);
-if(ex)ex.qty=Math.min(9,ex.qty+qty);else S.selected.push({name,tier,qty});
+if(ex)ex.qty=Math.min(42,ex.qty+qty);else S.selected.push({name,tier,qty:Math.min(42,qty)});
 save();renderSelected();
 log(`已添加 ${name}·${tier}阶 ×${qty}`);
 }
@@ -1982,7 +1982,7 @@ function renderSelected(){
     const qm=document.createElement("button");qm.className="ghost small";qm.textContent="−";
     qm.onclick=()=>{s.qty--;if(s.qty<=0)S.selected=S.selected.filter(x=>x!==s);save();renderSelected();};
     const qp=document.createElement("button");qp.className="ghost small";qp.textContent="+";
-    qp.onclick=()=>{if(s.qty<9)s.qty++;save();renderSelected();};
+    qp.onclick=()=>{if(s.qty<42)s.qty++;save();renderSelected();};
     const rm=document.createElement("button");rm.className="ghost small";rm.textContent="移除";
     rm.onclick=()=>{S.selected=S.selected.filter(x=>x!==s);save();renderSelected();};
     ctrl.append(qm,qp,rm);d.appendChild(ctrl);box.appendChild(d);

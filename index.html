@@ -2582,11 +2582,12 @@ async function doSolve(){
           if(st.score>L.curScore){L.curScore=st.score;L.curSnap=snapshot(st);}
           if(st.score>bestScore){
             bestScore=st.score;bestSnap=snapshot(st);bestDirty=true;bestLi=li;
-            // 即时广播：其他线30%概率跳到新最优点+扰动，抱团攻坚
+            // 即时广播：显著提升(>0.3%)才通知其他线，15%概率跳过去+扰动，避免频繁打断
             for(let oj=0; oj<N_LINES; oj++){
               if(oj===li) continue;
               const OL=lines[oj];
-              if(OL.rng()<0.3){
+              const gainRatio=(bestScore-OL.curScore)/Math.max(1,Math.abs(OL.curScore));
+              if(gainRatio>0.003 && OL.rng()<0.15){
                 restore(OL.st,bestSnap);OL.st.score=bestScore;
                 for(let k=0;k<2;k++){const u2=pickOp(OL.ops,OL.rng)();if(u2){OL.st.score=stateScore(OL.st);}}
                 OL.curSnap=snapshot(OL.st);OL.curScore=OL.st.score;

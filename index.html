@@ -2584,6 +2584,8 @@ async function doSolve(){
   const awakenDb = AWAKEN_DB;
   
   let progTimer = null;
+  // 实时最优显示：任一 Worker 上报更高分时刷新结果区（节流 2.5 秒）
+  let liveBestScore = -Infinity, liveBestSnap = null, lastLiveRender = 0, liveSt = null;
   const workerResults = await new Promise((resolve, reject) => {
     const results = [];
     let doneCount = 0;
@@ -2605,8 +2607,20 @@ async function doSolve(){
       worker.onmessage = (e) => {
         const msg = e.data;
         if (msg.type === 'progress') {
-          // 进度条走时间动画，这里只记轮次（避免重复计算 iters）
-          if (msg.round) totalIters = totalIters; // 占位：真实 iters 在 done 里汇总
+          // 任一 Worker 发现更高分 → 实时刷新结果区（节流，避免频繁重绘）
+          if (msg.snap && msg.snap.length && msg.bestScore > liveBestScore) {
+            liveBestScore = msg.bestScore;
+            liveBestSnap = msg.snap;
+            const nowMs = performance.now();
+            if (nowMs - lastLiveRender > 2500) {
+              lastLiveRender = nowMs;
+              try {
+                if (!liveSt) liveSt = newSolverState(instances, table, R, C, locked, ctx);
+                restore(liveSt, liveBestSnap);
+                if (liveSt.pl.length) renderResult(liveSt.pl, evaluate(liveSt.pl, ctx, true), R, C, locked, true);
+              } catch (e) { /* 实时预览失败不影响主流程 */ }
+            }
+          }
         } else if (msg.type === 'done') {
           results[wi] = msg;
           doneCount++;
@@ -2733,7 +2747,7 @@ async function doSolve(){
 $("btnSolve").onclick=doSolve;
 
 /* ================= 结果 ================= */
-function renderResult(pl,res,R,C,locked){
+function renderResult(pl,res,R,C,locked,live){
 $("resEmpty").style.display="none";$("resBody").style.display="block";
 const isW=S.target==="weighted";
 const score=isW?res.weightedTotal:res.powerTotal;
@@ -2741,7 +2755,7 @@ $("resPowerLabel").textContent=isW?"加权分":"总战力";
 $("resPower").textContent=fmtN(score);
 const used=pl.reduce((a,p)=>a+p.cells.length,0);
 // 自定义权重模式下附带真实战力，避免误解
-$("resMeta").textContent=`${pl.length} 件 · ${used}/${R*C-locked.size} 格`+(isW?` · 真实战力 ${fmtN(res.powerTotal)}`:"");
+$("resMeta").textContent=`${pl.length} 件 · ${used}/${R*C-locked.size} 格`+(isW?` · 真实战力 ${fmtN(res.powerTotal)}`:"")+(live?" · ⚡实时":"");
 const g=$("resGrid");g.style.gridTemplateColumns=`repeat(${C},auto)`;
 g.classList.add("merged");g.innerHTML="";
 const cmap=new Map();pl.forEach((p,i)=>p.cells.forEach(c=>cmap.set(c,i)));

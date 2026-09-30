@@ -367,10 +367,15 @@ function runRound(job, roundIdx, roundMs, shared) {
       }
     }
 
-    // 节流进度汇报（约2秒一次）
+    // 节流进度汇报（约2秒一次）；最优分有提升时顺带把摆盘快照发给主线程做实时显示
     if (now - shared.lastProg > 2000) {
       shared.lastProg = now;
-      postMessage({type: 'progress', iters: shared.iters + iters, bestScore: shared.bestScore, round: roundIdx + 1});
+      const msg = {type: 'progress', iters: shared.iters + iters, bestScore: shared.bestScore, round: roundIdx + 1};
+      if (shared.bestScore > shared.lastSentScore && shared.bestSnap.length) {
+        shared.lastSentScore = shared.bestScore;
+        msg.snap = shared.bestSnap;
+      }
+      postMessage(msg);
     }
   }
 
@@ -388,7 +393,7 @@ function runSingleLine(job) {
   const ROUND_MS = 15000;
   const budgetMs = job.budget * 1000;
   const t0 = performance.now();
-  const shared = {bestScore: -Infinity, bestSnap: [], iters: 0, lastProg: 0};
+  const shared = {bestScore: -Infinity, bestSnap: [], iters: 0, lastProg: 0, lastSentScore: -Infinity};
 
   let round = 0;
   while (performance.now() - t0 < budgetMs) {

@@ -255,6 +255,7 @@ body{margin:0;background:radial-gradient(1200px 600px at 50% -10%,#2b2140 0%,var
       <label>随机种子 <input type="number" id="seed" value="42" style="width:90px"></label>
       <label><input type="checkbox" id="fillAll"> 强制填满背包</label>
     </div>
+    <div id="awakenHint" style="display:none;margin-top:8px;padding:8px 12px;border:1px solid #5a4a7a;background:#2a2138;border-radius:10px;font-size:13px;color:#c9a0ff">⚡ 检测到已选法宝使用了觉醒（相邻增益影响摆法），建议时间预算选 60 秒以上 <button class="ghost small" id="btnSet60" style="margin-left:8px">设为 60 秒</button></div>
     <div class="row" style="margin-top:12px">
       <button id="btnSolve" style="flex:1">开始求解</button>
     </div>
@@ -1997,6 +1998,7 @@ function renderSelected(){
   }
   $("selSummary").textContent=`${pieces} 件 · ${cells} 格`;
   renderElders(); // 已选变化时重新检测长老
+  renderAwakenHint(); // 已选变化时刷新觉醒提示
 }
 $("btnClearSel").onclick=()=>{S.selected=[];save();renderSelected();};
 // 法宝目录默认折叠，点击标题展开/折叠
@@ -2062,10 +2064,24 @@ function renderWeights(){
   }
 }
 document.querySelectorAll('input[name=target]').forEach(r=>r.onchange=()=>{S.target=document.querySelector('input[name=target]:checked').value;save();renderWeights();});
-$("budget").onchange=e=>{S.budget=+e.target.value;save();};
+$("budget").onchange=e=>{S.budget=+e.target.value;save();renderAwakenHint();};
 $("seed").onchange=e=>{S.seed=+e.target.value||0;save();};
 $("fillAll").onchange=e=>{S.fillAll=e.target.checked;save();};
 $("workers").onchange=e=>{S.workers=e.target.value;save();};
+// 觉醒提示：已选法宝开了觉醒且预算<60秒时，建议60秒
+function awakenInUse(){
+  const ids=new Set();
+  for(const s of S.selected){
+    const eq=EQUIPS.find(e=>e.name===s.name&&e.tier===s.tier);
+    if(eq)ids.add(eq.id);
+  }
+  return Object.entries(S.awaken).some(([id,lv])=>lv>0&&ids.has(+id));
+}
+function renderAwakenHint(){
+  const show=awakenInUse()&&S.budget<60;
+  $("awakenHint").style.display=show?"":"none";
+}
+$("btnSet60").onclick=()=>{$("budget").value="60";S.budget=60;save();renderAwakenHint();};
 function log(msg){const l=$("log");l.textContent+=msg+"\n";l.scrollTop=l.scrollHeight;}
 
 /* ================= 计分（复刻原工具 Q1） ================= */
@@ -2208,7 +2224,7 @@ function renderElders(){
         const v=+awSel.value;
         if(v===0)delete S.awaken[it.id];
         else S.awaken[it.id]=v;
-        save();
+        save();renderAwakenHint();
       };
       wrap.appendChild(awSel);
       row.appendChild(wrap);

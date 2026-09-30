@@ -245,6 +245,13 @@ body{margin:0;background:radial-gradient(1200px 600px at 50% -10%,#2b2140 0%,var
           <option value="120">120 秒</option>
         </select>
       </label>
+      <label>并行 Worker
+        <select id="workers">
+          <option value="auto" selected>自适应</option>
+          <option value="2">2</option><option value="3">3</option>
+          <option value="4">4</option><option value="6">6</option>
+        </select>
+      </label>
       <label>随机种子 <input type="number" id="seed" value="42" style="width:90px"></label>
       <label><input type="checkbox" id="fillAll"> 强制填满背包</label>
     </div>
@@ -1891,14 +1898,14 @@ const sleep=ms=>new Promise(r=>setTimeout(r,ms));
 
 /* ================= 状态 ================= */
 const S={elFilter:0,search:"",selected:[],rows:6,cols:7,locked:new Set(),
-elderStars:{},awaken:{},talents:["","","",""],target:"power",weights:null,budget:8,seed:42,fillAll:false};
+elderStars:{},awaken:{},talents:["","","",""],target:"power",weights:null,budget:8,seed:42,fillAll:false,workers:"auto"};
 const itemTier={}, itemQty={};
 function save(){try{localStorage.setItem("laozuSolverV1",JSON.stringify({selected:S.selected,rows:S.rows,cols:S.cols,
-locked:[...S.locked],elderStars:S.elderStars,awaken:S.awaken,talents:S.talents,target:S.target,weights:S.weights,budget:S.budget,seed:S.seed,fillAll:S.fillAll}));}catch(e){}}
+locked:[...S.locked],elderStars:S.elderStars,awaken:S.awaken,talents:S.talents,target:S.target,weights:S.weights,budget:S.budget,seed:S.seed,fillAll:S.fillAll,workers:S.workers}));}catch(e){}}
 function load(){try{const d=JSON.parse(localStorage.getItem("laozuSolverV1")||"null");if(!d)return;
 S.selected=d.selected||[];S.rows=d.rows||6;S.cols=d.cols||7;S.locked=new Set(d.locked||[]);
 S.elderStars=(d.elderStars&&typeof d.elderStars==="object")?d.elderStars:{};S.awaken=(d.awaken&&typeof d.awaken==="object")?d.awaken:{};S.talents=d.talents||["","","",""];S.target=d.target||"power";S.weights=d.weights||null;
-S.budget=d.budget||8;S.seed=d.seed??42;S.fillAll=!!d.fillAll;}catch(e){}}
+S.budget=d.budget||8;S.seed=d.seed??42;S.fillAll=!!d.fillAll;S.workers=d.workers||"auto";}catch(e){}}
 
 /* ================= 法宝目录 ================= */
 function shapePreview(shape,scale){
@@ -2058,6 +2065,7 @@ document.querySelectorAll('input[name=target]').forEach(r=>r.onchange=()=>{S.tar
 $("budget").onchange=e=>{S.budget=+e.target.value;save();};
 $("seed").onchange=e=>{S.seed=+e.target.value||0;save();};
 $("fillAll").onchange=e=>{S.fillAll=e.target.checked;save();};
+$("workers").onchange=e=>{S.workers=e.target.value;save();};
 function log(msg){const l=$("log");l.textContent+=msg+"\n";l.scrollTop=l.scrollHeight;}
 
 /* ================= 计分（复刻原工具 Q1） ================= */
@@ -2554,10 +2562,12 @@ async function doSolve(){
   // 预计算摆放表（无旋转）
   const table=buildPlacementTable(instances,R,C,locked);
 
-  // === Web Workers 真并行：3个Worker各跑1条线 ===
-  const N_WORKERS = 3;
-  const TEMP_MULTS = [0.7, 1.0, 1.6];
-  log(`启动 ${N_WORKERS} 个 Worker 真并行求解...`);
+  // === Web Workers 真并行：数量自适应（默认），也可手动指定 ===
+  const CORES=(typeof navigator!=="undefined"&&navigator.hardwareConcurrency)||4;
+  const AUTO_WORKERS=Math.min(Math.max(CORES-1,2),6);
+  const N_WORKERS=(S.workers||"auto")==="auto"?AUTO_WORKERS:parseInt(S.workers,10);
+  const TEMP_MULTS = [0.7, 1.0, 1.6]; // 冷/中/热循环分配
+  log(`启动 ${N_WORKERS} 个 Worker 真并行求解（${(S.workers||"auto")==="auto"?"自适应，"+CORES+" 核":"手动指定"}）...`);
   
   // 准备 Worker 数据（可序列化）
   const workerInstances = instances.map(inst => ({
@@ -2647,7 +2657,7 @@ async function doSolve(){
         ctx: workerCtx,
         budget: budget,
         seed: (S.seed >>> 0) + wi * 7919 + 13,
-        tempMult: TEMP_MULTS[wi],
+        tempMult: TEMP_MULTS[wi % TEMP_MULTS.length],
         skillById: skillById,
         awakenDb: awakenDb,
         attrs: ATTRS, // 完整属性表（含 kind/nPower），Worker 计分用
@@ -2830,7 +2840,7 @@ function init(){
 load();
 $("bpRows").value=S.rows;$("bpCols").value=S.cols;
 renderElders();
-$("budget").value=String(S.budget);$("seed").value=S.seed;$("fillAll").checked=S.fillAll;
+$("budget").value=String(S.budget);$("seed").value=S.seed;$("fillAll").checked=S.fillAll;$("workers").value=S.workers;
 document.querySelector('input[name=target][value="'+S.target+'"]').checked=true;
 $("search").oninput=e=>{S.search=e.target.value;renderCatalog();};
 renderElFilter();renderCatalog();renderSelected();renderBackpack();renderTalents();renderWeights();

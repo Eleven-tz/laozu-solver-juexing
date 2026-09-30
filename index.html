@@ -2643,9 +2643,43 @@ async function doSolve(){
   }
   $("progBar").style.width="100%";
 
-  // 恢复全局最优并 polish
+  // 恢复全局最优
   const st=lines[bestLi].st, rngB=lines[bestLi].rng;
   restore(st,bestSnap);st.score=bestScore;
+
+  // 确定性局部搜索：每件试遍所有位置，取最优，循环至收敛（抹平随机性）
+  let lsImproved=true, lsRounds=0;
+  while(lsImproved && lsRounds<5){
+    lsImproved=false; lsRounds++;
+    // 随机顺序遍历，避免固定顺序偏差
+    const order=[...st.pl]; for(let i=order.length-1;i>0;i--){const j=(rngB()*(i+1))|0;[order[i],order[j]]=[order[j],order[i]];}
+    for(const p of order){
+      const uid=p.inst.uid;
+      const curKey=p.r+","+p.c;
+      const placements=st.table.table.get(uid);
+      let bestPm=null, bestSc=st.score;
+      const removed=removeInst(st,uid);
+      if(!removed) continue;
+      for(const pm of placements){
+        if(placeInst(st,uid,pm)){
+          st.score=stateScore(st);
+          if(st.score>bestSc){bestSc=st.score;bestPm=pm;}
+          removeInst(st,uid);
+        }
+      }
+      // 恢复到最优位置
+      if(bestPm){
+        placeInst(st,uid,bestPm); st.score=bestSc;
+        if(bestSc>bestScore){bestScore=bestSc;bestSnap=snapshot(st);lsImproved=true;}
+      }else{
+        // 放回原位
+        const origPm=st.table.byAnchor.get(uid).get(curKey);
+        if(origPm){placeInst(st,uid,origPm);st.score=stateScore(st);}
+      }
+    }
+  }
+  if(lsRounds>1) log(`局部精修：${lsRounds} 轮`);
+
   let polished=false;
   for(let round=0;round<8;round++){
     let improved=false;

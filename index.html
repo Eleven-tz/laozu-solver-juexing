@@ -2554,117 +2554,121 @@ async function doSolve(){
   // 预计算摆放表（无旋转）
   const table=buildPlacementTable(instances,R,C,locked);
 
-  // === 多线并行退火：3条线同时跑，共享全局最优 ===
-  const N_LINES=3;
-  const lines=[];
-  for(let li=0; li<N_LINES; li++){
-    const rngL=mulberry32(((S.seed>>>0)+li*7919+13)>>>0);
-    const stL=newSolverState(instances,table,R,C,locked,ctx);
-    const opsL=makeOperators(stL,rngL);
-    initialPlace(stL,rngL);
-    lines.push({st:stL, ops:opsL, rng:rngL, curSnap:snapshot(stL), curScore:stL.score});
-  }
-  // 全局最优（跨线共享）
-  let bestLi=0;
-  for(let li=1; li<N_LINES; li++) if(lines[li].curScore>lines[bestLi].curScore) bestLi=li;
-  let bestSnap=lines[bestLi].curSnap, bestScore=lines[bestLi].curScore;
-  log(`初始贪心(3线)：最优 ${fmtN(S.fillAll?bestScore-lines[bestLi].st.pl.reduce((a,p)=>a+p.cells.length,0)*FILL_BONUS:bestScore)}`);
+  // === Web Workers 真并行：3个Worker各跑1条线 ===
+  const N_WORKERS = 3;
+  const TEMP_MULTS = [0.7, 1.0, 1.6];
+  log(`启动 ${N_WORKERS} 个 Worker 真并行求解...`);
+  
+  // 准备 Worker 数据（可序列化）
+  const workerInstances = instances.map(inst => ({
+    uid: inst.uid,
+    eq: {
+      id: inst.eq.id,
+      name: inst.eq.name,
+      element: inst.eq.element,
+      skillIds: inst.eq.skillIds,
+      starBonus: inst.eq.starBonus,
+    },
+    tier: inst.tier,
+    shape: {cells: inst.shape.cells, h: inst.shape.h, w: inst.shape.w},
+  }));
+  const workerCtx = {
+    R, C,
+    locked: [...locked],
+    effAtk: ctx.effAtk, effDef: ctx.effDef, effHp: ctx.effHp,
+    weights: ctx.weights, fillAll: ctx.fillAll, target: ctx.target,
+    awaken: ctx.awaken,
+  };
+  // SKILL_BY_ID 和 AWAKEN_DB 需要传给 Worker
+  const skillById = SKILL_BY_ID;
+  const awakenDb = AWAKEN_DB;
+  
+  let progTimer = null;
+  const workerResults = await new Promise((resolve, reject) => {
+    const results = [];
+    let doneCount = 0;
+    let totalIters = 0;
+    const workers = [];
+    const killAll = () => { for (const w of workers) { try { w.terminate(); } catch (e) {} } };
+    let failed = false;
+    const failAll = (msg) => {
+      if (failed) return;
+      failed = true;
+      killAll();
+      reject(new Error(msg));
+    };
 
-  // 并行回火：5条线不同温度，0号冷(精耕)、4号热(探索)
-  const TEMP_MULT=[0.7,1.0,1.6]; // 3线：冷/中/热
-  for(let li=0; li<N_LINES; li++){
-    const L=lines[li];
-    const cells0=L.st.pl.reduce((a,p)=>a+p.cells.length,0);
-    const tb0=S.fillAll?L.curScore-cells0*FILL_BONUS:L.curScore;
-    L.T0=Math.max(1,Math.abs(tb0)*0.03*TEMP_MULT[li]);
-    L.T1=Math.max(1e-9,Math.abs(tb0)*1e-3*TEMP_MULT[li]);
-    L.lastImprove=performance.now();
-  }
-  let iters=0,lastTick=0,lastLiveRender=0,bestDirty=true,lastCull=performance.now(),restartRound=1;
-  const plFromSnap=(snap)=>{const pl=[];for(const s of snap){const pm=table.byAnchor.get(s.uid)?.get(s.r+","+s.c);if(pm){const inst=lines[0].st.uidToInst.get(s.uid);pl.push({inst,eq:inst.eq,tier:inst.tier,r:s.r,c:s.c,cells:pm.cells});}}return pl;};
-  const end=t0+budget*1000;
-  while(performance.now()<end){
-    const now=performance.now(),frac=Math.min(1,(now-t0)/(budget*1000));
-    // 轮询每条线，各跑一个小批量（70ms/3 ≈ 每线23ms）
-    for(let li=0; li<N_LINES; li++){
-      const L=lines[li], st=L.st, rngL=L.rng, opsL=L.ops;
-      const T=L.T0*Math.pow(L.T1/L.T0,frac), batchUntil=performance.now()+23;
-      while(performance.now()<batchUntil&&performance.now()<end){
-        const before=st.score;
-        const undo=pickOp(opsL,rngL)();
-        if(!undo)continue;
-        st.score=stateScore(st);
-        const delta=st.score-before;
-        if(delta>=0||rngL()<Math.exp(delta/T)){
-          if(st.score>L.curScore){L.curScore=st.score;L.curSnap=snapshot(st);L.lastImprove=performance.now();}
-          if(st.score>bestScore){
-            bestScore=st.score;bestSnap=snapshot(st);bestDirty=true;bestLi=li;
-            // 独立搜索：禁用广播，3线零交流保多样性
-            if(false) for(let oj=0; oj<N_LINES; oj++){
-              if(oj===li) continue;
-              const OL=lines[oj];
-              const gainRatio=(bestScore-OL.curScore)/Math.max(1,Math.abs(OL.curScore));
-              if(gainRatio>0.003 && OL.rng()<0.15){
-                restore(OL.st,bestSnap);OL.st.score=bestScore;
-                for(let k=0;k<2;k++){const u2=pickOp(OL.ops,OL.rng)();if(u2){OL.st.score=stateScore(OL.st);}}
-                OL.curSnap=snapshot(OL.st);OL.curScore=OL.st.score;
-              }
-            }
+    for (let wi = 0; wi < N_WORKERS; wi++) {
+      const worker = new Worker('solver-worker.js');
+      workers.push(worker);
+
+      worker.onmessage = (e) => {
+        const msg = e.data;
+        if (msg.type === 'progress') {
+          // 进度条走时间动画，这里只记轮次（避免重复计算 iters）
+          if (msg.round) totalIters = totalIters; // 占位：真实 iters 在 done 里汇总
+        } else if (msg.type === 'done') {
+          results[wi] = msg;
+          doneCount++;
+          log(`Worker ${wi+1} 完成：最优 ${Math.round(msg.bestScore).toLocaleString()}，${msg.iters.toLocaleString()} 次迭代，${msg.rounds || 1} 轮`);
+          worker.terminate();
+          if (doneCount === N_WORKERS) {
+            resolve(results);
           }
-        }else{
-          undo();
-          st.score=before;
+        } else if (msg.type === 'error') {
+          log(`Worker ${wi+1} 出错：${msg.message}`);
+          failAll(msg.message);
         }
-        iters++;
-      }
+      };
+
+      worker.onerror = (err) => {
+        log(`Worker ${wi+1} 加载失败：${err.message || err.type || '未知错误'}`);
+        failAll(err.message || 'Worker 加载失败');
+      };
+
+      // 发送任务
+      worker.postMessage({
+        type: 'solve',
+        instances: workerInstances,
+        ctx: workerCtx,
+        budget: budget,
+        seed: (S.seed >>> 0) + wi * 7919 + 13,
+        tempMult: TEMP_MULTS[wi],
+        skillById: skillById,
+        awakenDb: awakenDb,
+        attrs: ATTRS, // 完整属性表（含 kind/nPower），Worker 计分用
+      });
     }
-    // 定时全员重启：每15秒，保存全局最优后，3线从新随机起点出发（多轮独立搜索）
-    if(now-lastCull>15000){
-      lastCull=now;
-      for(let li=0; li<N_LINES; li++){
-        const L=lines[li];
-        L.rng=mulberry32((S.seed+li*7919+13+restartRound*104729)>>>0);
-        L.st=makeState(L.rng,placementTable);
-        greedyPlaceAll(L.st,allUids.slice(),L.rng);
-        L.st.score=stateScore(L.st);
-        L.curScore=L.st.score; L.curSnap=snapshot(L.st);
-        L.lastImprove=now;
-        const cells0=L.st.pl.reduce((a,p)=>a+p.cells.length,0);
-        const tb0=S.fillAll?L.curScore-cells0*FILL_BONUS:L.curScore;
-        L.T0=Math.max(1,Math.abs(tb0)*0.03*TEMP_MULT[li]);
-        L.T1=Math.max(1e-9,Math.abs(tb0)*1e-3*TEMP_MULT[li]);
-      }
-      restartRound++;
-      if(restartRound>1) log(`第${restartRound}轮重启（保留最优 ${Math.round(bestScore).toLocaleString()}）`);
-    }
-    // 独立搜索：禁用末位淘汰
-    if(false && now-lastCull>10000){
-      lastCull=now;
-      let worstLi=0;
-      for(let li=1; li<N_LINES; li++) if(lines[li].curScore<lines[worstLi].curScore) worstLi=li;
-      const WL=lines[worstLi];
-      const gap=(bestScore-WL.curScore)/Math.max(1,Math.abs(bestScore));
-      if(gap>0.02 && now-WL.lastImprove>10000 && worstLi!==bestLi){
-        restore(WL.st,bestSnap);WL.st.score=bestScore;
-        for(let k=0;k<3;k++){const u2=pickOp(WL.ops,WL.rng)();if(u2){WL.st.score=stateScore(WL.st);}}
-        WL.curSnap=snapshot(WL.st);WL.curScore=WL.st.score;WL.lastImprove=now;
-      }
-    }
-    if(now-lastTick>400){lastTick=now;$("progBar").style.width=(frac*100).toFixed(1)+"%";}
-    if(bestDirty&&now-lastLiveRender>800){
-      lastLiveRender=now;bestDirty=false;
-      const livePl=plFromSnap(bestSnap);
-      if(livePl.length){
-        renderResult(livePl,evaluate(livePl,ctx,false),R,C,locked);
-        $("resMeta").textContent+=" · 🔄求解中(3线)";
-      }
-    }
-    await sleep(0);
+
+    // 进度条动画（Worker运行时，按时间走）
+    progTimer = setInterval(() => {
+      const elapsed = (performance.now() - t0) / 1000;
+      const pct = Math.min(99, (elapsed / budget) * 100);
+      $("progBar").style.width = pct + "%";
+    }, 500);
+  }).catch(err => {
+    log(`Workers 失败：${err.message}，请刷新重试`);
+    solving = false; $("btnSolve").disabled = false;
+    return null;
+  });
+  clearInterval(progTimer);
+
+  if (!workerResults) return;
+  
+  // 取最优
+  let bestWi = 0;
+  for (let i = 1; i < workerResults.length; i++) {
+    if (workerResults[i].bestScore > workerResults[bestWi].bestScore) bestWi = i;
   }
+  let bestSnap = workerResults[bestWi].bestSnap;
+  let bestScore = workerResults[bestWi].bestScore;
+  const totalIters = workerResults.reduce((a, r) => a + r.iters, 0);
+  log(`Workers 完成：最优 ${Math.round(bestScore).toLocaleString()}（Worker ${bestWi+1}），共 ${totalIters.toLocaleString()} 次迭代`);
   $("progBar").style.width="100%";
 
-  // 恢复全局最优
-  const st=lines[bestLi].st, rngB=lines[bestLi].rng;
+  // 恢复全局最优（Workers结果）
+  const st=newSolverState(instances,table,R,C,locked,ctx);
+  const rngB=mulberry32((S.seed>>>0)+999);
   restore(st,bestSnap);st.score=bestScore;
 
   // 确定性局部搜索：每件试遍所有位置，取最优，循环至收敛（抹平随机性）

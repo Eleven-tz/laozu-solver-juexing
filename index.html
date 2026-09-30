@@ -2725,7 +2725,7 @@ async function doSolve(){
   if(!best.length){log("求解失败：没有可行的摆放。");solving=false;$("btnSolve").disabled=false;return;}
   const unplaced=instances.length-best.length;
   const trueScore=S.fillAll?bestScore-best.reduce((a,p)=>a+p.cells.length,0)*FILL_BONUS:bestScore;
-  log(`✓ 求解完成：最优 ${fmtN(trueScore)}，放置 ${best.length}/${instances.length} 件${unplaced?`（${unplaced} 件放不下）`:""}${polished?"（含收尾补放）":""}，${iters.toLocaleString()} 次迭代`);
+  log(`✓ 求解完成：最优 ${fmtN(trueScore)}，放置 ${best.length}/${instances.length} 件${unplaced?`（${unplaced} 件放不下）`:""}${polished?"（含收尾补放）":""}，${totalIters.toLocaleString()} 次迭代`);
   // renderResult 直接复用求解时的 ctx（eff 数组按 instances/uid 索引），不再重建
   renderResult(best,evaluate(best,ctx,true),R,C,locked);
   solving=false;$("btnSolve").disabled=false;

@@ -2573,11 +2573,12 @@ async function doSolve(){
     }
     if(now-lastTick>400){lastTick=now;$("progBar").style.width=(frac*100).toFixed(1)+"%";}
     // 有更优解且距离上次渲染超过 800ms，就自动显示
+    // detail=false：直播时只更新分数和摆盘图，不算单件明细表（明细表只在最终渲染时算）
     if(bestDirty&&now-lastLiveRender>800){
       lastLiveRender=now;bestDirty=false;
       const livePl=plFromSnap(bestSnap);
       if(livePl.length){
-        renderResult(livePl,evaluate(livePl,ctx,true),R,C,locked);
+        renderResult(livePl,evaluate(livePl,ctx,false),R,C,locked);
         $("resMeta").textContent+=" · 🔄求解中";
       }
     }

@@ -2566,8 +2566,15 @@ async function doSolve(){
   const CORES=(typeof navigator!=="undefined"&&navigator.hardwareConcurrency)||4;
   const AUTO_WORKERS=Math.min(Math.max(CORES-1,2),6);
   const N_WORKERS=(S.workers||"auto")==="auto"?AUTO_WORKERS:parseInt(S.workers,10);
-  const TEMP_MULTS = [0.7, 1.0, 1.6]; // 冷/中/热循环分配
-  log(`启动 ${N_WORKERS} 个 Worker 真并行求解（${(S.workers||"auto")==="auto"?"自适应，"+CORES+" 核":"手动指定"}）...`);
+  // 温度倍率：3个及以下用经典冷/中/热；更多时按几何 spread 生成，每个 Worker 温度都不同
+  function tempMultsFor(n){
+    if(n<=3) return [0.7,1.0,1.6].slice(0,n);
+    const lo=0.5, hi=2.5, out=[];
+    for(let i=0;i<n;i++) out.push(+(lo*Math.pow(hi/lo,i/(n-1))).toFixed(2));
+    return out;
+  }
+  const TEMP_MULTS = tempMultsFor(N_WORKERS);
+  log(`启动 ${N_WORKERS} 个 Worker 真并行求解（${(S.workers||"auto")==="auto"?"自适应，"+CORES+" 核":"手动指定"}），温度倍率 [${TEMP_MULTS.join(", ")}]...`);
   
   // 准备 Worker 数据（可序列化）
   const workerInstances = instances.map(inst => ({
@@ -2657,7 +2664,7 @@ async function doSolve(){
         ctx: workerCtx,
         budget: budget,
         seed: (S.seed >>> 0) + wi * 7919 + 13,
-        tempMult: TEMP_MULTS[wi % TEMP_MULTS.length],
+        tempMult: TEMP_MULTS[wi],
         skillById: skillById,
         awakenDb: awakenDb,
         attrs: ATTRS, // 完整属性表（含 kind/nPower），Worker 计分用

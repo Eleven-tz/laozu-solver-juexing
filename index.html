@@ -258,6 +258,7 @@ body{margin:0;background:radial-gradient(1200px 600px at 50% -10%,#2b2140 0%,var
     <div id="awakenHint" style="display:none;margin-top:8px;padding:8px 12px;border:1px solid #5a4a7a;background:#2a2138;border-radius:10px;font-size:13px;color:#c9a0ff">⚡ 检测到已选法宝使用了觉醒（相邻增益影响摆法），建议时间预算选 60 秒以上 <button class="ghost small" id="btnSet60" style="margin-left:8px">设为 60 秒</button></div>
     <div class="row" style="margin-top:12px">
       <button id="btnSolve" style="flex:1">开始求解</button>
+      <button id="btnStop" class="ghost" style="display:none">中止</button>
     </div>
     <div class="progress"><i id="progBar"></i></div>
     <div class="log" id="log">就绪。添加法宝后点击「开始求解」。\n</div>
@@ -2543,6 +2544,7 @@ function pickOp(ops,rng){
 }
 
 let solving=false;
+let abortSolve=null; // 求解进行中时可调用以中止（杀掉 Workers，用当前最优收尾）
 async function doSolve(){
   if(solving)return;
   if(!S.selected.length){log("请先在目录中添加法宝。");return;}
@@ -2558,6 +2560,7 @@ async function doSolve(){
   const avail=R*C-locked.size;
   if(needCells>avail)log(`⚠ 法宝共需 ${needCells} 格，可用仅 ${avail} 格，部分法宝可能放不下。`);
   solving=true;$("btnSolve").disabled=true;$("progBar").style.width="0%";
+  $("btnStop").style.display="";
   const budget=S.budget,t0=performance.now();
   const talentIds=S.talents.filter(Boolean),talentMap=buildTalentMap(talentIds);
   const weights=S.target==="weighted"?Object.fromEntries(ATTRS.map(a=>[a.id,S.weights?(S.weights[a.id]??a.nPower):a.nPower])):null;
@@ -2630,7 +2633,19 @@ async function doSolve(){
       if (failed) return;
       failed = true;
       killAll();
+      abortSolve = null;
       reject(new Error(msg));
+    };
+    // 用户中止：杀掉 Workers，用实时最优快照收尾（没有快照则直接结束）
+    abortSolve = () => {
+      abortSolve = null;
+      log("已中止求解，保留当前已找到的最优摆盘。");
+      killAll();
+      if (liveBestSnap && liveBestSnap.length) {
+        resolve([{bestScore: liveBestScore, bestSnap: liveBestSnap, iters: totalIters, rounds: 1, aborted: true}]);
+      } else {
+        resolve([]);
+      }
     };
 
     for (let wi = 0; wi < N_WORKERS; wi++) {
@@ -2660,6 +2675,7 @@ async function doSolve(){
           log(`Worker ${wi+1} 完成：最优 ${Math.round(msg.bestScore).toLocaleString()}，${msg.iters.toLocaleString()} 次迭代，${msg.rounds || 1} 轮`);
           worker.terminate();
           if (doneCount === N_WORKERS) {
+            abortSolve = null;
             resolve(results);
           }
         } else if (msg.type === 'error') {
@@ -2695,12 +2711,16 @@ async function doSolve(){
     }, 500);
   }).catch(err => {
     log(`Workers 失败：${err.message}，请刷新重试`);
-    solving = false; $("btnSolve").disabled = false;
+    solving = false; $("btnSolve").disabled = false; $("btnStop").style.display="none";
     return null;
   });
   clearInterval(progTimer);
+  $("btnStop").style.display="none";abortSolve=null;
 
-  if (!workerResults) return;
+  if (!workerResults||!workerResults.length){
+    log("已中止，未获得可用摆盘。");
+    solving=false;$("btnSolve").disabled=false;return;
+  }
   
   // 取最优
   let bestWi = 0;
@@ -2710,7 +2730,8 @@ async function doSolve(){
   let bestSnap = workerResults[bestWi].bestSnap;
   let bestScore = workerResults[bestWi].bestScore;
   const totalIters = workerResults.reduce((a, r) => a + r.iters, 0);
-  log(`Workers 完成：最优 ${Math.round(bestScore).toLocaleString()}（Worker ${bestWi+1}），共 ${totalIters.toLocaleString()} 次迭代`);
+  const wasAborted=!!workerResults[bestWi].aborted;
+  log(wasAborted?`已中止，保留当前最优 ${Math.round(bestScore).toLocaleString()}`:`Workers 完成：最优 ${Math.round(bestScore).toLocaleString()}（Worker ${bestWi+1}），共 ${totalIters.toLocaleString()} 次迭代`);
   $("progBar").style.width="100%";
 
   // 恢复全局最优（Workers结果）
@@ -2778,6 +2799,7 @@ async function doSolve(){
   solving=false;$("btnSolve").disabled=false;
 }
 $("btnSolve").onclick=doSolve;
+$("btnStop").onclick=()=>{if(abortSolve)abortSolve();};
 
 /* ================= 结果 ================= */
 function renderResult(pl,res,R,C,locked,live){

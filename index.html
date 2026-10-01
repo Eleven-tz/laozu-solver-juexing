@@ -2099,17 +2099,19 @@ function effBase(eq,starsMap,talentMap,attr,awakenMap){
   const stars=starsMap?(starsMap[eq.id]??0):0;
   if(eq.quality===5&&eq.elder&&eq.elder.starBonus&&stars>0){let s=0;for(const [th,v] of eq.elder.starBonus)if(th<=stars)s=v;o+=s/DE;}
   o+=((talentMap[eq.weaponForm]||{})[attr]??0)/DE;
-  // 觉醒：自身全部基础属性提升（按觉醒等级查，1/2/3级累积）
+  // 觉醒：自身基础属性提升与星级/天赋独立乘算（按觉醒等级查，1/2/3级累积）
+  let aw=0;
   const awLv=awakenMap?(awakenMap[eq.id]??0):0;
   const awData=AWAKEN_DB[eq.id];
   if(awData){
     for(let lv=1;lv<=3&&lv<=awLv;lv++){
       const effs=awData.levels[lv];
       if(!effs)continue;
-      for(const ef of effs)if(ef.type==="self_mult")o+=ef.pct/DE;
+      for(const ef of effs)if(ef.type==="self_mult")aw+=ef.pct/DE;
     }
   }
-  return o>0?Math.floor(bv*(1+o)):bv;
+  const v=bv*(1+o)*(1+aw);
+  return v>bv?Math.floor(v):bv;
 }
 // 自动检测：从已选法宝中找出长老红装，按长老分组
 function detectElders(instances){

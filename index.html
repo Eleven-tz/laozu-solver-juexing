@@ -179,7 +179,7 @@ body{margin:0;background:radial-gradient(1200px 600px at 50% -10%,#2b2140 0%,var
 <div id="actions" class="row">
 <button id="btnImport"></button>
 <button class="ghost" id="btnLocks"></button>
-<a class="go" href="laozu-solver.html">去优化器查看 →</a>
+<a class="go" href="javascript:void(0)" onclick="laozuSwitchTab('solver')">去优化器查看 →</a>
 </div>
 <div id="toast"></div>
 <p class="foot">说明：识别需要读取图片像素，全程在本地浏览器完成，不上传任何数据。demo 版形状占格冲突只做简单消解，多格法宝若被拆成多格请手动删除多余格。<br>
@@ -289,7 +289,7 @@ body{margin:0;background:radial-gradient(1200px 600px at 50% -10%,#2b2140 0%,var
 <script>
 function laozuSwitchTab(which){
   document.getElementById('btnTabOcr').classList.toggle('on', which==='ocr');
-  document.getElementById('btnTabSolver').classList.toggle('on', which==='ocr');
+  document.getElementById('btnTabSolver').classList.toggle('on', which==='solver');
   document.getElementById('tab-ocr').classList.toggle('on', which==='ocr');
   document.getElementById('tab-solver').classList.toggle('on', which==='solver');
   if(which==='solver' && window.laozuSolverReload){

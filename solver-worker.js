@@ -63,29 +63,61 @@ function evaluate(pl,ctx,detail){
     powerTotal+=w;weightedTotal+=q;
     pieces.push({eq,tier:pl[h].tier,atk:D,def:Df,hp:Hp,buffs:[...y.entries()],srcs,power:w,weighted:q});
   }
-  // 觉醒3：相邻增益（给相邻指定系法宝攻防血+，影响摆法）
-  // （全局形态光环不影响摆放，已移除计算）
+  // 觉醒相邻增益（给相邻指定系法宝攻防血+，影响摆法）：觉3起生效；觉5为强化版，替代觉3（取已解锁的最高档，非叠加）
   for(let h=0;h<P;h++){
     const eq=pl[h].eq,awLv=awakenMap[eq.id]??0,awData=AWAKEN_DB[eq.id];
-    if(!awData||awLv<3||!awData.levels[3])continue;
-    for(const ef of awData.levels[3]){
-      if(ef.type!=="adjacent_buff")continue;
-      const mult=ef.pct/DE;
-      for(const p of nb[h]){
-        if(pl[p].eq.element!==ef.element)continue;
-        const pc=pieces[p];
-        const bA=ctx.effAtk[pl[p].inst.uid],bD=ctx.effDef[pl[p].inst.uid],bH=ctx.effHp[pl[p].inst.uid];
-        const dA=Math.floor(bA*mult),dD=Math.floor(bD*mult),dH=Math.floor(bH*mult);
-        pc.atk+=dA;pc.def+=dD;pc.hp+=dH;
-        let dw=0,dq=0;
-        for(const a of ATTRS){
-          const u=a.kind===2?0.01:1;let gv=0;
-          if(a.id===A_ATK)gv=dA;else if(a.id===A_DEF)gv=dD;else if(a.id===A_HP)gv=dH;
-          else continue;
-          dw+=gv*u*a.nPower;dq+=gv*u*(ctx.weights?(ctx.weights[a.id]??a.nPower):a.nPower);
+    if(!awData||awLv<3)continue;
+    let adjEf=null,adjLv=0;
+    for(let lv=3;lv<=awLv;lv++){
+      const effs=awData.levels[lv];if(!effs)continue;
+      for(const ef of effs)if(ef.type==="adjacent_buff"){adjEf=ef;adjLv=lv;}
+    }
+    if(!adjEf)continue;
+    const mult=adjEf.pct/DE;
+    for(const p of nb[h]){
+      if(pl[p].eq.element!==adjEf.element)continue;
+      const pc=pieces[p];
+      const bA=ctx.effAtk[pl[p].inst.uid],bD=ctx.effDef[pl[p].inst.uid],bH=ctx.effHp[pl[p].inst.uid];
+      const dA=Math.floor(bA*mult),dD=Math.floor(bD*mult),dH=Math.floor(bH*mult);
+      pc.atk+=dA;pc.def+=dD;pc.hp+=dH;
+      let dw=0,dq=0;
+      for(const a of ATTRS){
+        const u=a.kind===2?0.01:1;let gv=0;
+        if(a.id===A_ATK)gv=dA;else if(a.id===A_DEF)gv=dD;else if(a.id===A_HP)gv=dH;
+        else continue;
+        dw+=gv*u*a.nPower;dq+=gv*u*(ctx.weights?(ctx.weights[a.id]??a.nPower):a.nPower);
+      }
+      pc.power+=dw;pc.weighted+=dq;powerTotal+=dw;weightedTotal+=dq;
+      if(detail)pc.srcs.push({t:"awaken3",skill:`觉醒${adjLv}(来自${eq.name})`,attr:"相邻",value:adjEf.pct,per:adjEf.pct,n:1,names:[],from:eq.name});
+    }
+  }
+  // 觉醒全局增益（觉3同形态/觉5同系，背包内全部生效、本法宝除外）：2026-10-11 起计入得分；只取决于已放集合，不影响摆法
+  for(let h=0;h<P;h++){
+    const eq=pl[h].eq,awLv=awakenMap[eq.id]??0,awData=AWAKEN_DB[eq.id];
+    if(!awData||awLv<3)continue;
+    for(let lv=3;lv<=awLv;lv++){
+      const effs=awData.levels[lv];if(!effs)continue;
+      for(const ef of effs){
+        if(ef.type!=="global_form"&&ef.type!=="global_element")continue;
+        const mult=ef.pct/DE;
+        for(let p=0;p<P;p++){
+          if(p===h)continue;
+          const peq=pl[p].eq;
+          if(ef.type==="global_form"?peq.weaponForm!==ef.form:peq.element!==ef.element)continue;
+          const pc=pieces[p];
+          const bA=ctx.effAtk[pl[p].inst.uid],bD=ctx.effDef[pl[p].inst.uid],bH=ctx.effHp[pl[p].inst.uid];
+          const dA=Math.floor(bA*mult),dD=Math.floor(bD*mult),dH=Math.floor(bH*mult);
+          pc.atk+=dA;pc.def+=dD;pc.hp+=dH;
+          let dw=0,dq=0;
+          for(const a of ATTRS){
+            const u=a.kind===2?0.01:1;let gv=0;
+            if(a.id===A_ATK)gv=dA;else if(a.id===A_DEF)gv=dD;else if(a.id===A_HP)gv=dH;
+            else continue;
+            dw+=gv*u*a.nPower;dq+=gv*u*(ctx.weights?(ctx.weights[a.id]??a.nPower):a.nPower);
+          }
+          pc.power+=dw;pc.weighted+=dq;powerTotal+=dw;weightedTotal+=dq;
+          if(detail)pc.srcs.push({t:"awakenG",skill:`觉醒${lv}(来自${eq.name})`,attr:"全局",value:ef.pct,per:ef.pct,n:1,names:[],from:eq.name});
         }
-        pc.power+=dw;pc.weighted+=dq;powerTotal+=dw;weightedTotal+=dq;
-        if(detail)pc.srcs.push({t:"awaken3",skill:`觉醒3(来自${eq.name})`,attr:"相邻",value:ef.pct,per:ef.pct,n:1,names:[],from:eq.name});
       }
     }
   }

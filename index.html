@@ -1363,61 +1363,75 @@ const ELDER_MAP={
 250804:{id:24804,name:"食铁兽",quality:4,starBonus:[[2,6000],[4,10000],[5,15000]]},
 };
 /* ================= 觉醒数据库 =================
-   按装备ID：每档觉醒等级的效果列表（效果叠加，觉醒3 = 1+2+3全生效）
+   按装备ID：每档觉醒等级的效果列表（效果叠加，觉醒N = 1..N全生效）
    effect 类型：
    - self_per_adjacent: {element, attr, perUnit} 每相邻一件指定系，自身某属性+perUnit(/10000)
-   - self_mult: {pct} 自身全部基础属性+pct(/10000)
-   - global_form: {form, pct, excludeSelf} 背包内指定形态全部基础属性+pct(/10000)
-   - adjacent_buff: {element, pct} 相邻指定系法宝攻防血+pct(/10000)（给相邻的加，影响摆法）
-   4/5级预留（游戏内尚未实装）
+   - self_mult: {pct} 自身全部基础属性+pct(/10000)，与星级/天赋独立乘算（同一觉醒层内多档相加）
+   - global_form: {form, pct, excludeSelf} 背包内指定形态法宝攻防血+pct(/10000)（2026-10-11 起计入得分；只取决于已放集合，不影响摆法）
+   - global_element: {element, pct, excludeSelf} 背包内指定系法宝攻防血+pct(/10000)（同上）
+   - adjacent_buff: {element, pct} 相邻指定系法宝攻防血+pct(/10000)（给相邻的加，影响摆法）；觉5同名效果替代觉3（强化至1500，非叠加）
+   4/5级：2026-10-11 用户截图实证（残虹断影/金锋无影觉醒面板）。觉4 统一 self_mult 3000（原文注「与其他觉醒效果叠加」，返还祭品不记）；
+   觉5 相邻型=adjacent_buff 强化至1500、全局型=global_element 1500。特殊3件（金翎荡云/炎驹驰天/叱咤玉革，均2品质蓝长老）缺4/5数据，maxLevel 保持3，用户决定暂不管
    数据来源：2026-09-30 用户截图转录64件，缺16件标无数据 */
 const AWAKEN_DB={
 150103:{ // 金辉裂穹
-  maxLevel:3,
+  maxLevel:5,
   levels:{
     1:[{type:"self_per_adjacent",element:1,attr:2004,perUnit:3000}],
     2:[{type:"self_mult",pct:2000}],
     3:[{type:"adjacent_buff",element:1,pct:800}],
+    4:[{type:"self_mult",pct:3000}],
+    5:[{type:"adjacent_buff",element:1,pct:1500}],
   }
 },
 150104:{ // 三尖两刃
-  maxLevel:3,
+  maxLevel:5,
   levels:{
     1:[{type:"self_per_adjacent",element:1,attr:2004,perUnit:4000}],
     2:[{type:"self_mult",pct:2000}],
     3:[{type:"global_form",form:6,pct:1500,excludeSelf:true}],
+    4:[{type:"self_mult",pct:3000}],
+    5:[{type:"global_element",element:1,pct:1500,excludeSelf:true}],
   }
 },
 150105:{ // 残虹断影
-  maxLevel:3,
+  maxLevel:5,
   levels:{
     1:[{type:"self_per_adjacent",element:1,attr:2004,perUnit:3000}],
     2:[{type:"self_mult",pct:2000}],
     3:[{type:"adjacent_buff",element:1,pct:800}],
+    4:[{type:"self_mult",pct:3000}],
+    5:[{type:"adjacent_buff",element:1,pct:1500}],
   }
 },
 150106:{ // 龙渊七星
-  maxLevel:3,
+  maxLevel:5,
   levels:{
     1:[{type:"self_per_adjacent",element:1,attr:2004,perUnit:4000}],
     2:[{type:"self_mult",pct:2000}],
     3:[{type:"global_form",form:2,pct:1500,excludeSelf:true}],
+    4:[{type:"self_mult",pct:3000}],
+    5:[{type:"global_element",element:1,pct:1500,excludeSelf:true}],
   }
 },
 150107:{ // 朔气飞星
-  maxLevel:3,
+  maxLevel:5,
   levels:{
     1:[{type:"self_per_adjacent",element:1,attr:2004,perUnit:3000}],
     2:[{type:"self_mult",pct:2000}],
     3:[{type:"adjacent_buff",element:1,pct:800}],
+    4:[{type:"self_mult",pct:3000}],
+    5:[{type:"adjacent_buff",element:1,pct:1500}],
   }
 },
 150108:{ // 金锋无影
-  maxLevel:3,
+  maxLevel:5,
   levels:{
     1:[{type:"self_per_adjacent",element:1,attr:2025,perUnit:1000}],
     2:[{type:"self_mult",pct:2000}],
     3:[{type:"global_form",form:7,pct:1500,excludeSelf:true}],
+    4:[{type:"self_mult",pct:3000}],
+    5:[{type:"global_element",element:1,pct:1500,excludeSelf:true}],
   }
 },
 150109:{ // 金翎荡云
@@ -1429,147 +1443,183 @@ const AWAKEN_DB={
   }
 },
 150203:{ // 蕴剑葫芦
-  maxLevel:3,
+  maxLevel:5,
   levels:{
     1:[{type:"self_per_adjacent",element:2,attr:2004,perUnit:3000}],
     2:[{type:"self_mult",pct:2000}],
     3:[{type:"adjacent_buff",element:2,pct:800}],
+    4:[{type:"self_mult",pct:3000}],
+    5:[{type:"adjacent_buff",element:2,pct:1500}],
   }
 },
 150204:{ // 青阳唤春
-  maxLevel:3,
+  maxLevel:5,
   levels:{
     1:[{type:"self_per_adjacent",element:2,attr:2004,perUnit:4000}],
     2:[{type:"self_mult",pct:2000}],
     3:[{type:"global_form",form:2,pct:1500,excludeSelf:true}],
+    4:[{type:"self_mult",pct:3000}],
+    5:[{type:"global_element",element:2,pct:1500,excludeSelf:true}],
   }
 },
 150205:{ // 掌天奇韵
-  maxLevel:3,
+  maxLevel:5,
   levels:{
     1:[{type:"self_per_adjacent",element:2,attr:2006,perUnit:3000}],
     2:[{type:"self_mult",pct:2000}],
     3:[{type:"adjacent_buff",element:2,pct:800}],
+    4:[{type:"self_mult",pct:3000}],
+    5:[{type:"adjacent_buff",element:2,pct:1500}],
   }
 },
 150206:{ // 五毒俱全
-  maxLevel:3,
+  maxLevel:5,
   levels:{
     1:[{type:"self_per_adjacent",element:2,attr:2025,perUnit:1000}],
     2:[{type:"self_mult",pct:2000}],
     3:[{type:"global_form",form:4,pct:1500,excludeSelf:true}],
+    4:[{type:"self_mult",pct:3000}],
+    5:[{type:"global_element",element:2,pct:1500,excludeSelf:true}],
   }
 },
 150207:{ // 灵泽衔瑞
-  maxLevel:3,
+  maxLevel:5,
   levels:{
     1:[{type:"self_per_adjacent",element:2,attr:2004,perUnit:3000}],
     2:[{type:"self_mult",pct:2000}],
     3:[{type:"adjacent_buff",element:2,pct:800}],
+    4:[{type:"self_mult",pct:3000}],
+    5:[{type:"adjacent_buff",element:2,pct:1500}],
   }
 },
 150208:{ // 通幽震魄
-  maxLevel:3,
+  maxLevel:5,
   levels:{
     1:[{type:"self_per_adjacent",element:2,attr:2025,perUnit:1000}],
     2:[{type:"self_mult",pct:2000}],
     3:[{type:"global_form",form:3,pct:1500,excludeSelf:true}],
+    4:[{type:"self_mult",pct:3000}],
+    5:[{type:"global_element",element:2,pct:1500,excludeSelf:true}],
   }
 },
 150303:{ // 凌波惊鸿
-  maxLevel:3,
+  maxLevel:5,
   levels:{
     1:[{type:"self_per_adjacent",element:3,attr:2004,perUnit:3000}],
     2:[{type:"self_mult",pct:2000}],
     3:[{type:"adjacent_buff",element:3,pct:800}],
+    4:[{type:"self_mult",pct:3000}],
+    5:[{type:"adjacent_buff",element:3,pct:1500}],
   }
 },
 150304:{ // 月华清影
-  maxLevel:3,
+  maxLevel:5,
   levels:{
     1:[{type:"self_per_adjacent",element:3,attr:2025,perUnit:1000}],
     2:[{type:"self_mult",pct:2000}],
     3:[{type:"global_form",form:2,pct:1500,excludeSelf:true}],
+    4:[{type:"self_mult",pct:3000}],
+    5:[{type:"global_element",element:3,pct:1500,excludeSelf:true}],
   }
 },
 150305:{ // 玄水护心
-  maxLevel:3,
+  maxLevel:5,
   levels:{
     1:[{type:"self_per_adjacent",element:3,attr:2069,perUnit:1000}],
     2:[{type:"self_mult",pct:2000}],
     3:[{type:"adjacent_buff",element:3,pct:800}],
+    4:[{type:"self_mult",pct:3000}],
+    5:[{type:"adjacent_buff",element:3,pct:1500}],
   }
 },
 150306:{ // 封神奇卷
-  maxLevel:3,
+  maxLevel:5,
   levels:{
     1:[{type:"self_per_adjacent",element:3,attr:2004,perUnit:4000}],
     2:[{type:"self_mult",pct:2000}],
     3:[{type:"global_form",form:5,pct:1500,excludeSelf:true}],
+    4:[{type:"self_mult",pct:3000}],
+    5:[{type:"global_element",element:3,pct:1500,excludeSelf:true}],
   }
 },
 150307:{ // 沧溟凝冰
-  maxLevel:3,
+  maxLevel:5,
   levels:{
     1:[{type:"self_per_adjacent",element:3,attr:2005,perUnit:7500}],
     2:[{type:"self_mult",pct:2000}],
     3:[{type:"adjacent_buff",element:3,pct:800}],
+    4:[{type:"self_mult",pct:3000}],
+    5:[{type:"adjacent_buff",element:3,pct:1500}],
   }
 },
 150308:{ // 玄冥坠星
-  maxLevel:3,
+  maxLevel:5,
   levels:{
     1:[{type:"self_per_adjacent",element:3,attr:2025,perUnit:1000}],
     2:[{type:"self_mult",pct:2000}],
     3:[{type:"global_form",form:8,pct:1500,excludeSelf:true}],
+    4:[{type:"self_mult",pct:3000}],
+    5:[{type:"global_element",element:3,pct:1500,excludeSelf:true}],
   }
 },
 150403:{ // 燧火传薪
-  maxLevel:3,
+  maxLevel:5,
   levels:{
     1:[{type:"self_per_adjacent",element:4,attr:2004,perUnit:3000}],
     2:[{type:"self_mult",pct:2000}],
     3:[{type:"adjacent_buff",element:4,pct:800}],
+    4:[{type:"self_mult",pct:3000}],
+    5:[{type:"adjacent_buff",element:4,pct:1500}],
   }
 },
 150404:{ // 燃欲燎魂
-  maxLevel:3,
+  maxLevel:5,
   levels:{
     1:[{type:"self_per_adjacent",element:4,attr:2025,perUnit:1000}],
     2:[{type:"self_mult",pct:2000}],
     3:[{type:"global_form",form:4,pct:1500,excludeSelf:true}],
+    4:[{type:"self_mult",pct:3000}],
+    5:[{type:"global_element",element:4,pct:1500,excludeSelf:true}],
   }
 },
 150405:{ // 日巡灼恶
-  maxLevel:3,
+  maxLevel:5,
   levels:{
     1:[{type:"self_per_adjacent",element:4,attr:2004,perUnit:3000}],
     2:[{type:"self_mult",pct:2000}],
     3:[{type:"adjacent_buff",element:4,pct:800}],
+    4:[{type:"self_mult",pct:3000}],
+    5:[{type:"adjacent_buff",element:4,pct:1500}],
   }
 },
 150406:{ // 烈阳灼心
-  maxLevel:3,
+  maxLevel:5,
   levels:{
     1:[{type:"self_per_adjacent",element:4,attr:2004,perUnit:4000}],
     2:[{type:"self_mult",pct:2000}],
     3:[{type:"global_form",form:7,pct:1500,excludeSelf:true}],
+    4:[{type:"self_mult",pct:3000}],
+    5:[{type:"global_element",element:4,pct:1500,excludeSelf:true}],
   }
 },
 150407:{ // 祭火律令
-  maxLevel:3,
+  maxLevel:5,
   levels:{
     1:[{type:"self_per_adjacent",element:4,attr:2004,perUnit:3000}],
     2:[{type:"self_mult",pct:2000}],
     3:[{type:"adjacent_buff",element:4,pct:800}],
+    4:[{type:"self_mult",pct:3000}],
+    5:[{type:"adjacent_buff",element:4,pct:1500}],
   }
 },
 150408:{ // 南明离炎
-  maxLevel:3,
+  maxLevel:5,
   levels:{
     1:[{type:"self_per_adjacent",element:4,attr:2004,perUnit:4000}],
     2:[{type:"self_mult",pct:2000}],
     3:[{type:"global_form",form:3,pct:1500,excludeSelf:true}],
+    4:[{type:"self_mult",pct:3000}],
+    5:[{type:"global_element",element:4,pct:1500,excludeSelf:true}],
   }
 },
 150409:{ // 炎驹驰天
@@ -1581,195 +1631,243 @@ const AWAKEN_DB={
   }
 },
 150503:{ // 灵獐啸岩
-  maxLevel:3,
+  maxLevel:5,
   levels:{
     1:[{type:"self_per_adjacent",element:5,attr:2005,perUnit:7500}],
     2:[{type:"self_mult",pct:2000}],
     3:[{type:"adjacent_buff",element:5,pct:800}],
+    4:[{type:"self_mult",pct:3000}],
+    5:[{type:"adjacent_buff",element:5,pct:1500}],
   }
 },
 150504:{ // 十方大山
-  maxLevel:3,
+  maxLevel:5,
   levels:{
     1:[{type:"self_per_adjacent",element:5,attr:2005,perUnit:10000}],
     2:[{type:"self_mult",pct:2000}],
     3:[{type:"global_form",form:8,pct:1500,excludeSelf:true}],
+    4:[{type:"self_mult",pct:3000}],
+    5:[{type:"global_element",element:5,pct:1500,excludeSelf:true}],
   }
 },
 150505:{ // 遁地奇行
-  maxLevel:3,
+  maxLevel:5,
   levels:{
     1:[{type:"self_per_adjacent",element:5,attr:2004,perUnit:3000}],
     2:[{type:"self_mult",pct:2000}],
     3:[{type:"adjacent_buff",element:5,pct:800}],
+    4:[{type:"self_mult",pct:3000}],
+    5:[{type:"adjacent_buff",element:5,pct:1500}],
   }
 },
 150506:{ // 五色炼天
-  maxLevel:3,
+  maxLevel:5,
   levels:{
     1:[{type:"self_per_adjacent",element:5,attr:2004,perUnit:4000}],
     2:[{type:"self_mult",pct:2000}],
     3:[{type:"global_form",form:5,pct:1500,excludeSelf:true}],
+    4:[{type:"self_mult",pct:3000}],
+    5:[{type:"global_element",element:5,pct:1500,excludeSelf:true}],
   }
 },
 150507:{ // 逐日镇岳
-  maxLevel:3,
+  maxLevel:5,
   levels:{
     1:[{type:"self_per_adjacent",element:5,attr:2004,perUnit:3000}],
     2:[{type:"self_mult",pct:2000}],
     3:[{type:"adjacent_buff",element:5,pct:800}],
+    4:[{type:"self_mult",pct:3000}],
+    5:[{type:"adjacent_buff",element:5,pct:1500}],
   }
 },
 150508:{ // 泰山压顶
-  maxLevel:3,
+  maxLevel:5,
   levels:{
     1:[{type:"self_per_adjacent",element:5,attr:2004,perUnit:4000}],
     2:[{type:"self_mult",pct:2000}],
     3:[{type:"global_form",form:9,pct:1500,excludeSelf:true}],
+    4:[{type:"self_mult",pct:3000}],
+    5:[{type:"global_element",element:5,pct:1500,excludeSelf:true}],
   }
 },
 150603:{ // 惊雷兽吼
-  maxLevel:3,
+  maxLevel:5,
   levels:{
     1:[{type:"self_per_adjacent",element:6,attr:2004,perUnit:3000}],
     2:[{type:"self_mult",pct:2000}],
     3:[{type:"adjacent_buff",element:6,pct:800}],
+    4:[{type:"self_mult",pct:3000}],
+    5:[{type:"adjacent_buff",element:6,pct:1500}],
   }
 },
 150604:{ // 阳雷裂空
-  maxLevel:3,
+  maxLevel:5,
   levels:{
     1:[{type:"self_per_adjacent",element:6,attr:2004,perUnit:4000}],
     2:[{type:"self_mult",pct:2000}],
     3:[{type:"global_form",form:6,pct:1500,excludeSelf:true}],
+    4:[{type:"self_mult",pct:3000}],
+    5:[{type:"global_element",element:6,pct:1500,excludeSelf:true}],
   }
 },
 150605:{ // 截雷断运
-  maxLevel:3,
+  maxLevel:5,
   levels:{
     1:[{type:"self_per_adjacent",element:6,attr:2004,perUnit:3000}],
     2:[{type:"self_mult",pct:2000}],
     3:[{type:"adjacent_buff",element:6,pct:800}],
+    4:[{type:"self_mult",pct:3000}],
+    5:[{type:"adjacent_buff",element:6,pct:1500}],
   }
 },
 150606:{ // 阴雷回响
-  maxLevel:3,
+  maxLevel:5,
   levels:{
     1:[{type:"self_per_adjacent",element:6,attr:2004,perUnit:4000}],
     2:[{type:"self_mult",pct:2000}],
     3:[{type:"global_form",form:3,pct:1500,excludeSelf:true}],
+    4:[{type:"self_mult",pct:3000}],
+    5:[{type:"global_element",element:6,pct:1500,excludeSelf:true}],
   }
 },
 150607:{ // 九霄镇魔
-  maxLevel:3,
+  maxLevel:5,
   levels:{
     1:[{type:"self_per_adjacent",element:6,attr:2006,perUnit:3000}],
     2:[{type:"self_mult",pct:2000}],
     3:[{type:"adjacent_buff",element:6,pct:800}],
+    4:[{type:"self_mult",pct:3000}],
+    5:[{type:"adjacent_buff",element:6,pct:1500}],
   }
 },
 150608:{ // 五雷号令
-  maxLevel:3,
+  maxLevel:5,
   levels:{
     1:[{type:"self_per_adjacent",element:6,attr:2069,perUnit:1000}],
     2:[{type:"self_mult",pct:2000}],
     3:[{type:"global_form",form:9,pct:1500,excludeSelf:true}],
+    4:[{type:"self_mult",pct:3000}],
+    5:[{type:"global_element",element:6,pct:1500,excludeSelf:true}],
   }
 },
 150703:{ // 煞魔血叉
-  maxLevel:3,
+  maxLevel:5,
   levels:{
     1:[{type:"self_per_adjacent",element:7,attr:2004,perUnit:3000}],
     2:[{type:"self_mult",pct:2000}],
     3:[{type:"adjacent_buff",element:7,pct:800}],
+    4:[{type:"self_mult",pct:3000}],
+    5:[{type:"adjacent_buff",element:7,pct:1500}],
   }
 },
 150704:{ // 凶神戮世
-  maxLevel:3,
+  maxLevel:5,
   levels:{
     1:[{type:"self_per_adjacent",element:7,attr:2025,perUnit:1000}],
     2:[{type:"self_mult",pct:2000}],
     3:[{type:"global_form",form:6,pct:1500,excludeSelf:true}],
+    4:[{type:"self_mult",pct:3000}],
+    5:[{type:"global_element",element:7,pct:1500,excludeSelf:true}],
   }
 },
 150705:{ // 剖心夺爱
-  maxLevel:3,
+  maxLevel:5,
   levels:{
     1:[{type:"self_per_adjacent",element:7,attr:2004,perUnit:3000}],
     2:[{type:"self_mult",pct:2000}],
     3:[{type:"adjacent_buff",element:7,pct:800}],
+    4:[{type:"self_mult",pct:3000}],
+    5:[{type:"adjacent_buff",element:7,pct:1500}],
   }
 },
 150706:{ // 合欢极乐
-  maxLevel:3,
+  maxLevel:5,
   levels:{
     1:[{type:"self_per_adjacent",element:7,attr:2025,perUnit:1000}],
     2:[{type:"self_mult",pct:2000}],
     3:[{type:"global_form",form:7,pct:1500,excludeSelf:true}],
+    4:[{type:"self_mult",pct:3000}],
+    5:[{type:"global_element",element:7,pct:1500,excludeSelf:true}],
   }
 },
 150707:{ // 勾魂索命
-  maxLevel:3,
+  maxLevel:5,
   levels:{
     1:[{type:"self_per_adjacent",element:7,attr:2004,perUnit:3000}],
     2:[{type:"self_mult",pct:2000}],
     3:[{type:"adjacent_buff",element:7,pct:800}],
+    4:[{type:"self_mult",pct:3000}],
+    5:[{type:"adjacent_buff",element:7,pct:1500}],
   }
 },
 150708:{ // 酆都帝律
-  maxLevel:3,
+  maxLevel:5,
   levels:{
     1:[{type:"self_per_adjacent",element:7,attr:2004,perUnit:4000}],
     2:[{type:"self_mult",pct:2000}],
     3:[{type:"global_form",form:9,pct:1500,excludeSelf:true}],
+    4:[{type:"self_mult",pct:3000}],
+    5:[{type:"global_element",element:7,pct:1500,excludeSelf:true}],
   }
 },
 150803:{ // 天骄伟冠
-  maxLevel:3,
+  maxLevel:5,
   levels:{
     1:[{type:"self_per_adjacent",element:8,attr:2006,perUnit:3000}],
     2:[{type:"self_mult",pct:2000}],
     3:[{type:"adjacent_buff",element:8,pct:800}],
+    4:[{type:"self_mult",pct:3000}],
+    5:[{type:"adjacent_buff",element:8,pct:1500}],
   }
 },
 150804:{ // 真武神镯
-  maxLevel:3,
+  maxLevel:5,
   levels:{
     1:[{type:"self_per_adjacent",element:8,attr:2025,perUnit:1000}],
     2:[{type:"self_mult",pct:2000}],
     3:[{type:"global_form",form:5,pct:1500,excludeSelf:true}],
+    4:[{type:"self_mult",pct:3000}],
+    5:[{type:"global_element",element:8,pct:1500,excludeSelf:true}],
   }
 },
 150805:{ // 丑将破阵
-  maxLevel:3,
+  maxLevel:5,
   levels:{
     1:[{type:"self_per_adjacent",element:8,attr:2005,perUnit:7500}],
     2:[{type:"self_mult",pct:2000}],
     3:[{type:"adjacent_buff",element:8,pct:800}],
+    4:[{type:"self_mult",pct:3000}],
+    5:[{type:"adjacent_buff",element:8,pct:1500}],
   }
 },
 150806:{ // 巨灵擎天
-  maxLevel:3,
+  maxLevel:5,
   levels:{
     1:[{type:"self_per_adjacent",element:8,attr:2025,perUnit:1000}],
     2:[{type:"self_mult",pct:2000}],
     3:[{type:"global_form",form:8,pct:1500,excludeSelf:true}],
+    4:[{type:"self_mult",pct:3000}],
+    5:[{type:"global_element",element:8,pct:1500,excludeSelf:true}],
   }
 },
 150807:{ // 酒祖酿厄
-  maxLevel:3,
+  maxLevel:5,
   levels:{
     1:[{type:"self_per_adjacent",element:8,attr:2006,perUnit:3000}],
     2:[{type:"self_mult",pct:2000}],
     3:[{type:"adjacent_buff",element:8,pct:800}],
+    4:[{type:"self_mult",pct:3000}],
+    5:[{type:"adjacent_buff",element:8,pct:1500}],
   }
 },
 150808:{ // 佛门宝杵
-  maxLevel:3,
+  maxLevel:5,
   levels:{
     1:[{type:"self_per_adjacent",element:8,attr:2006,perUnit:6000}],
     2:[{type:"self_mult",pct:2000}],
     3:[{type:"global_form",form:4,pct:1500,excludeSelf:true}],
+    4:[{type:"self_mult",pct:3000}],
+    5:[{type:"global_element",element:8,pct:1500,excludeSelf:true}],
   }
 },
 150809:{ // 叱咤玉革
@@ -1781,107 +1879,133 @@ const AWAKEN_DB={
   }
 },
 250103:{ // 北斗天罡枪
-  maxLevel:3,
+  maxLevel:5,
   levels:{
     1:[{type:"self_per_adjacent",element:1,attr:2004,perUnit:3000}],
     2:[{type:"self_mult",pct:2000}],
     3:[{type:"adjacent_buff",element:1,pct:800}],
+    4:[{type:"self_mult",pct:3000}],
+    5:[{type:"adjacent_buff",element:1,pct:1500}],
   }
 },
 250104:{ // 如意金箍棒
-  maxLevel:3,
+  maxLevel:5,
   levels:{
     1:[{type:"self_per_adjacent",element:1,attr:2004,perUnit:4000}],
     2:[{type:"self_mult",pct:2000}],
     3:[{type:"global_form",form:6,pct:1500,excludeSelf:true}],
+    4:[{type:"self_mult",pct:3000}],
+    5:[{type:"global_element",element:1,pct:1500,excludeSelf:true}],
   }
 },
 250203:{ // 青枝栖日
-  maxLevel:3,
+  maxLevel:5,
   levels:{
     1:[{type:"self_per_adjacent",element:2,attr:2004,perUnit:3000}],
     2:[{type:"self_mult",pct:2000}],
     3:[{type:"adjacent_buff",element:2,pct:800}],
+    4:[{type:"self_mult",pct:3000}],
+    5:[{type:"adjacent_buff",element:2,pct:1500}],
   }
 },
 250204:{ // 太昊司春
-  maxLevel:3,
+  maxLevel:5,
   levels:{
     1:[{type:"self_per_adjacent",element:2,attr:2025,perUnit:1000}],
     2:[{type:"self_mult",pct:2000}],
     3:[{type:"global_form",form:2,pct:1500,excludeSelf:true}],
+    4:[{type:"self_mult",pct:3000}],
+    5:[{type:"global_element",element:2,pct:1500,excludeSelf:true}],
   }
 },
 250304:{ // 弱水涓扇
-  maxLevel:3,
+  maxLevel:5,
   levels:{
     1:[{type:"self_per_adjacent",element:3,attr:2004,perUnit:4000}],
     2:[{type:"self_mult",pct:2000}],
     3:[{type:"global_form",form:5,pct:1500,excludeSelf:true}],
+    4:[{type:"self_mult",pct:3000}],
+    5:[{type:"global_element",element:3,pct:1500,excludeSelf:true}],
   }
 },
 250403:{ // 食为天鼎
-  maxLevel:3,
+  maxLevel:5,
   levels:{
     1:[{type:"self_per_adjacent",element:4,attr:2004,perUnit:3000}],
     2:[{type:"self_mult",pct:2000}],
     3:[{type:"adjacent_buff",element:4,pct:800}],
+    4:[{type:"self_mult",pct:3000}],
+    5:[{type:"adjacent_buff",element:4,pct:1500}],
   }
 },
 250404:{ // 乾坤浑天
-  maxLevel:3,
+  maxLevel:5,
   levels:{
     1:[{type:"self_per_adjacent",element:4,attr:2049,perUnit:100}],
     2:[{type:"self_mult",pct:2000}],
     3:[{type:"global_form",form:4,pct:1500,excludeSelf:true}],
+    4:[{type:"self_mult",pct:3000}],
+    5:[{type:"global_element",element:4,pct:1500,excludeSelf:true}],
   }
 },
 250503:{ // 九州定海
-  maxLevel:3,
+  maxLevel:5,
   levels:{
     1:[{type:"self_per_adjacent",element:5,attr:2005,perUnit:7500}],
     2:[{type:"self_mult",pct:2000}],
     3:[{type:"adjacent_buff",element:5,pct:800}],
+    4:[{type:"self_mult",pct:3000}],
+    5:[{type:"adjacent_buff",element:5,pct:1500}],
   }
 },
 250504:{ // 庚辰龙脉
-  maxLevel:3,
+  maxLevel:5,
   levels:{
     1:[{type:"self_per_adjacent",element:5,attr:2025,perUnit:1000}],
     2:[{type:"self_mult",pct:2000}],
     3:[{type:"global_form",form:8,pct:1500,excludeSelf:true}],
+    4:[{type:"self_mult",pct:3000}],
+    5:[{type:"global_element",element:5,pct:1500,excludeSelf:true}],
   }
 },
 250603:{ // 免罪阳雷
-  maxLevel:3,
+  maxLevel:5,
   levels:{
     1:[{type:"self_per_adjacent",element:6,attr:2004,perUnit:3000}],
     2:[{type:"self_mult",pct:2000}],
     3:[{type:"adjacent_buff",element:6,pct:800}],
+    4:[{type:"self_mult",pct:3000}],
+    5:[{type:"adjacent_buff",element:6,pct:1500}],
   }
 },
 250604:{ // 纠罚神雷
-  maxLevel:3,
+  maxLevel:5,
   levels:{
     1:[{type:"self_per_adjacent",element:6,attr:2025,perUnit:1000}],
     2:[{type:"self_mult",pct:2000}],
     3:[{type:"global_form",form:6,pct:1500,excludeSelf:true}],
+    4:[{type:"self_mult",pct:3000}],
+    5:[{type:"global_element",element:6,pct:1500,excludeSelf:true}],
   }
 },
 250803:{ // 鸣玉无极
-  maxLevel:3,
+  maxLevel:5,
   levels:{
     1:[{type:"self_per_adjacent",element:8,attr:2006,perUnit:3000}],
     2:[{type:"self_mult",pct:2000}],
     3:[{type:"adjacent_buff",element:8,pct:800}],
+    4:[{type:"self_mult",pct:3000}],
+    5:[{type:"adjacent_buff",element:8,pct:1500}],
   }
 },
 250804:{ // 无相无我
-  maxLevel:3,
+  maxLevel:5,
   levels:{
     1:[{type:"self_per_adjacent",element:8,attr:2025,perUnit:1000}],
     2:[{type:"self_mult",pct:2000}],
     3:[{type:"global_form",form:5,pct:1500,excludeSelf:true}],
+    4:[{type:"self_mult",pct:3000}],
+    5:[{type:"global_element",element:8,pct:1500,excludeSelf:true}],
   }
 },
 };
@@ -2104,7 +2228,7 @@ function effBase(eq,starsMap,talentMap,attr,awakenMap){
   const awLv=awakenMap?(awakenMap[eq.id]??0):0;
   const awData=AWAKEN_DB[eq.id];
   if(awData){
-    for(let lv=1;lv<=3&&lv<=awLv;lv++){
+    for(let lv=1;lv<=5&&lv<=awLv;lv++){
       const effs=awData.levels[lv];
       if(!effs)continue;
       for(const ef of effs)if(ef.type==="self_mult")aw+=ef.pct/DE;
@@ -2280,29 +2404,61 @@ function evaluate(pl,ctx,detail){
     powerTotal+=w;weightedTotal+=q;
     pieces.push({eq,tier:pl[h].tier,atk:D,def:Df,hp:Hp,buffs:[...y.entries()],srcs,power:w,weighted:q});
   }
-  // 觉醒3：相邻增益（给相邻指定系法宝攻防血+，影响摆法）
-  // （全局形态光环不影响摆放，已移除计算）
+  // 觉醒相邻增益（给相邻指定系法宝攻防血+，影响摆法）：觉3起生效；觉5为强化版，替代觉3（取已解锁的最高档，非叠加）
   for(let h=0;h<P;h++){
     const eq=pl[h].eq,awLv=awakenMap[eq.id]??0,awData=AWAKEN_DB[eq.id];
-    if(!awData||awLv<3||!awData.levels[3])continue;
-    for(const ef of awData.levels[3]){
-      if(ef.type!=="adjacent_buff")continue;
-      const mult=ef.pct/DE;
-      for(const p of nb[h]){
-        if(pl[p].eq.element!==ef.element)continue;
-        const pc=pieces[p];
-        const bA=ctx.effAtk[pl[p].inst.uid],bD=ctx.effDef[pl[p].inst.uid],bH=ctx.effHp[pl[p].inst.uid];
-        const dA=Math.floor(bA*mult),dD=Math.floor(bD*mult),dH=Math.floor(bH*mult);
-        pc.atk+=dA;pc.def+=dD;pc.hp+=dH;
-        let dw=0,dq=0;
-        for(const a of ATTRS){
-          const u=a.kind===2?0.01:1;let gv=0;
-          if(a.id===A_ATK)gv=dA;else if(a.id===A_DEF)gv=dD;else if(a.id===A_HP)gv=dH;
-          else continue;
-          dw+=gv*u*a.nPower;dq+=gv*u*(ctx.weights?(ctx.weights[a.id]??a.nPower):a.nPower);
+    if(!awData||awLv<3)continue;
+    let adjEf=null,adjLv=0;
+    for(let lv=3;lv<=awLv;lv++){
+      const effs=awData.levels[lv];if(!effs)continue;
+      for(const ef of effs)if(ef.type==="adjacent_buff"){adjEf=ef;adjLv=lv;}
+    }
+    if(!adjEf)continue;
+    const mult=adjEf.pct/DE;
+    for(const p of nb[h]){
+      if(pl[p].eq.element!==adjEf.element)continue;
+      const pc=pieces[p];
+      const bA=ctx.effAtk[pl[p].inst.uid],bD=ctx.effDef[pl[p].inst.uid],bH=ctx.effHp[pl[p].inst.uid];
+      const dA=Math.floor(bA*mult),dD=Math.floor(bD*mult),dH=Math.floor(bH*mult);
+      pc.atk+=dA;pc.def+=dD;pc.hp+=dH;
+      let dw=0,dq=0;
+      for(const a of ATTRS){
+        const u=a.kind===2?0.01:1;let gv=0;
+        if(a.id===A_ATK)gv=dA;else if(a.id===A_DEF)gv=dD;else if(a.id===A_HP)gv=dH;
+        else continue;
+        dw+=gv*u*a.nPower;dq+=gv*u*(ctx.weights?(ctx.weights[a.id]??a.nPower):a.nPower);
+      }
+      pc.power+=dw;pc.weighted+=dq;powerTotal+=dw;weightedTotal+=dq;
+      if(detail)pc.srcs.push({t:"awaken3",skill:`觉醒${adjLv}(来自${eq.name})`,attr:"相邻",value:adjEf.pct,per:adjEf.pct,n:1,names:[],from:eq.name});
+    }
+  }
+  // 觉醒全局增益（觉3同形态/觉5同系，背包内全部生效、本法宝除外）：2026-10-11 起计入得分；只取决于已放集合，不影响摆法
+  for(let h=0;h<P;h++){
+    const eq=pl[h].eq,awLv=awakenMap[eq.id]??0,awData=AWAKEN_DB[eq.id];
+    if(!awData||awLv<3)continue;
+    for(let lv=3;lv<=awLv;lv++){
+      const effs=awData.levels[lv];if(!effs)continue;
+      for(const ef of effs){
+        if(ef.type!=="global_form"&&ef.type!=="global_element")continue;
+        const mult=ef.pct/DE;
+        for(let p=0;p<P;p++){
+          if(p===h)continue;
+          const peq=pl[p].eq;
+          if(ef.type==="global_form"?peq.weaponForm!==ef.form:peq.element!==ef.element)continue;
+          const pc=pieces[p];
+          const bA=ctx.effAtk[pl[p].inst.uid],bD=ctx.effDef[pl[p].inst.uid],bH=ctx.effHp[pl[p].inst.uid];
+          const dA=Math.floor(bA*mult),dD=Math.floor(bD*mult),dH=Math.floor(bH*mult);
+          pc.atk+=dA;pc.def+=dD;pc.hp+=dH;
+          let dw=0,dq=0;
+          for(const a of ATTRS){
+            const u=a.kind===2?0.01:1;let gv=0;
+            if(a.id===A_ATK)gv=dA;else if(a.id===A_DEF)gv=dD;else if(a.id===A_HP)gv=dH;
+            else continue;
+            dw+=gv*u*a.nPower;dq+=gv*u*(ctx.weights?(ctx.weights[a.id]??a.nPower):a.nPower);
+          }
+          pc.power+=dw;pc.weighted+=dq;powerTotal+=dw;weightedTotal+=dq;
+          if(detail)pc.srcs.push({t:"awakenG",skill:`觉醒${lv}(来自${eq.name})`,attr:"全局",value:ef.pct,per:ef.pct,n:1,names:[],from:eq.name});
         }
-        pc.power+=dw;pc.weighted+=dq;powerTotal+=dw;weightedTotal+=dq;
-        if(detail)pc.srcs.push({t:"awaken3",skill:`觉醒3(来自${eq.name})`,attr:"相邻",value:ef.pct,per:ef.pct,n:1,names:[],from:eq.name});
       }
     }
   }
@@ -2604,6 +2760,7 @@ async function doSolve(){
       id: inst.eq.id,
       name: inst.eq.name,
       element: inst.eq.element,
+      weaponForm: inst.eq.weaponForm,
       skillIds: inst.eq.skillIds,
       starBonus: inst.eq.starBonus,
     },

@@ -169,7 +169,7 @@ body{margin:0;background:radial-gradient(1200px 600px at 50% -10%,#2b2140 0%,var
 <div id="editor">
 <div class="edrow"><img id="edThumb" alt=""><div><div id="edTitle"></div><div id="edInfo"></div></div></div>
 <div class="edrow" id="edCands"></div>
-<div class="edrow"><select id="edManual"></select><select id="edTier"></select></div>
+<div class="edrow"><select id="edElement"></select><select id="edManual"></select><select id="edTier"></select></div>
 <div class="edrow">
 <button class="ghost" id="edTeach">记住这个法宝的样子</button>
 <button class="ghost" id="edEmpty">设为空格</button>
@@ -514,8 +514,13 @@ function decide(piece,stored){
     const qc=cands.filter(o=>EQUIP[o.equipId].q===piece.quality);
     if(qc.length)cands=qc;
   }
-  if(!cands.length)
-    return {...piece,state:"suspect",reason:"该五行/形态/品质组合在模板库中没有候选",equipId:null};
+  if(!cands.length){
+    // 过滤后无候选：用未过滤全池按签名距离兜底给候选，保证编辑器里有东西可点（用户可再切属性下拉纠正）
+    const fb=OT.map(o=>({o,d:sigDist(o.sig,piece.sig)})).sort((a,b)=>a.d-b.d).slice(0,5)
+      .map(x=>({equipId:x.o.equipId,d:+x.d.toFixed(2),stored:!!x.o.stored}));
+    return {...piece,state:"suspect",reason:"该五行/形态/品质组合在模板库中没有候选",equipId:null,
+      bestGuess:fb[0]?fb[0].equipId:null,candidates:fb};
+  }
   // 共鸣数字加成：命中则优先
   let pool=cands;
   if(piece.number){
@@ -1081,8 +1086,8 @@ function renderResults(){
     const lab=document.createElement("div");lab.className="rlab";lab.textContent=pieceLabel(p);
     d.appendChild(img);d.appendChild(lab);
     if(p.state==="covered"){
-      d.title=`${r+1}行${c+1}列 被「${p.coveredBy||""}」占据`;
-      d.style.cursor="default";
+      d.title=`${r+1}行${c+1}列 被「${p.coveredBy||""}」占据（点击可纠正）`;
+      d.onclick=()=>{state.selectedCell=idx;renderResults();openEditor(idx);};
     }else{
       d.title=`${r+1}行${c+1}列 ${p.state}`;
       d.onclick=()=>{state.selectedCell=idx;renderResults();openEditor(idx);};
@@ -1166,17 +1171,28 @@ function openEditor(idx){
     b.onclick=()=>{setFix(idx,{equipId:eqId});};
     cw.appendChild(b);
   }
-  // 手动指定
-  const ms=$("edManual");ms.innerHTML='<option value="">手动指定法宝…</option>';
-  const elFilter=p.element||null;
-  const names={};
-  for(const [id,e] of Object.entries(OCR.EQUIP)){
-    if(elFilter&&e.el!==OCR.EL_ID[elFilter])continue;
-    names[e.n]=1;
+  // 手动指定：属性下拉（默认已定法宝的属性，其次识别属性，可切换到其他属性）+ 该属性法宝名单
+  const ms=$("edManual");
+  const elSel=$("edElement");elSel.innerHTML="";
+  for(const eln of EL_ORDER){
+    const o=document.createElement("option");o.value=eln;o.textContent=eln+"系";elSel.appendChild(o);
   }
-  for(const n of Object.keys(names).sort()){
-    const o=document.createElement("option");o.value=n;o.textContent=n;ms.appendChild(o);
-  }
+  const fixedEl=p.equipId?Object.keys(OCR.EL_ID).find(n=>OCR.EL_ID[n]===OCR.EQUIP[p.equipId].el):null;
+  elSel.value=fixedEl||p.element||(p.elementScores&&p.elementScores[0]&&p.elementScores[0].n)||"金";
+  const fillManual=()=>{
+    ms.innerHTML='<option value="">手动指定法宝…</option>';
+    const elId=OCR.EL_ID[elSel.value];
+    const names={};
+    for(const [id,e] of Object.entries(OCR.EQUIP)){
+      if(e.el!==elId)continue;
+      names[e.n]=1;
+    }
+    for(const n of Object.keys(names).sort()){
+      const o=document.createElement("option");o.value=n;o.textContent=n;ms.appendChild(o);
+    }
+  };
+  fillManual();
+  elSel.onchange=fillManual;
   ms.onchange=()=>{
     if(!ms.value)return;
     const tiers=nameTiers(ms.value);

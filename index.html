@@ -2834,8 +2834,10 @@ async function doSolve(){
           if (msg.snap && msg.snap.length && msg.bestScore > liveBestScore) {
             liveBestScore = msg.bestScore;
             liveBestSnap = msg.snap;
+            // 勾填满时：未放满全部法宝的快照不展示（仅内部追踪，中止时仍可兜底），等放满的快照出现再刷新
+            const showable = !ctx.fillAll || liveBestSnap.length >= instances.length;
             const nowMs = performance.now();
-            if (nowMs - lastLiveRender > 2500) {
+            if (showable && nowMs - lastLiveRender > 2500) {
               lastLiveRender = nowMs;
               try {
                 if (!liveSt) liveSt = newSolverState(instances, table, R, C, locked, ctx);

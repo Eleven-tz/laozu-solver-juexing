@@ -1187,7 +1187,7 @@ function openEditor(idx){
       if(e.el!==elId)continue;
       names[e.n]=1;
     }
-    for(const n of Object.keys(names).sort()){
+    for(const n of Object.keys(names).sort((a,b)=>a.localeCompare(b,"zh-Hans-CN"))){
       const o=document.createElement("option");o.value=n;o.textContent=n;ms.appendChild(o);
     }
   };

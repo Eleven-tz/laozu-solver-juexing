@@ -1387,8 +1387,11 @@ const ELDER_MAP={
    - global_element: {element, pct, excludeSelf} 背包内指定系法宝攻防血+pct(/10000)（同上）
    - adjacent_buff: {element, pct} 相邻指定系法宝攻防血+pct(/10000)（给相邻的加，影响摆法）；觉5同名效果替代觉3（强化至1500，非叠加）
    4/5级：2026-10-11 用户截图实证（残虹断影/金锋无影觉醒面板）。觉4 统一 self_mult 3000（原文注「与其他觉醒效果叠加」，返还祭品不记）；
-   觉5 相邻型=adjacent_buff 强化至1500、全局型=global_element 1500。特殊3件（金翎荡云/炎驹驰天/叱咤玉革，均2品质蓝长老）缺4/5数据，maxLevel 保持3，用户决定暂不管
-   数据来源：2026-09-30 用户截图转录64件，缺16件标无数据 */
+   觉5 相邻型=adjacent_buff 强化至1500、全局型=global_element 1500。
+   蓝长老模板（长老品质2，共16件，每系2件）：觉1 self_mult 2000、觉2 返还（按各自长老种子，不计分记为空）、觉3 self_mult 3000、
+   觉4 返还（同觉2）、觉5 self_per_adjacent 本系/攻击力(attr 2004)/每件4000。2026-10-27 用户引仙破道觉醒面板截图实证，
+   并确认所有蓝长老觉醒1-5均为此模板；其中13件此前整件缺失、3件（金翎荡云/炎驹驰天/叱咤玉革）原 maxLevel 3，现一并补齐至5级
+   数据来源：2026-09-30 用户截图转录64件 + 2026-10-27 蓝长老模板补13件，共77件；仍缺3件（晴水华盖/冰魄华盖/万载玄冰）标无数据 */
 const AWAKEN_DB={
 150103:{ // 金辉裂穹
   maxLevel:5,
@@ -1451,11 +1454,23 @@ const AWAKEN_DB={
   }
 },
 150109:{ // 金翎荡云
-  maxLevel:3,
+  maxLevel:5,
   levels:{
     1:[{type:"self_mult",pct:2000}],
     2:[],
     3:[{type:"self_mult",pct:3000}],
+    4:[],
+    5:[{type:"self_per_adjacent",element:1,attr:2004,perUnit:4000}],
+  }
+},
+150110:{ // 亢金贯甲
+  maxLevel:5,
+  levels:{
+    1:[{type:"self_mult",pct:2000}],
+    2:[],
+    3:[{type:"self_mult",pct:3000}],
+    4:[],
+    5:[{type:"self_per_adjacent",element:1,attr:2004,perUnit:4000}],
   }
 },
 150203:{ // 蕴剑葫芦
@@ -1518,6 +1533,26 @@ const AWAKEN_DB={
     5:[{type:"global_element",element:2,pct:1500,excludeSelf:true}],
   }
 },
+150209:{ // 唤生吴钩
+  maxLevel:5,
+  levels:{
+    1:[{type:"self_mult",pct:2000}],
+    2:[],
+    3:[{type:"self_mult",pct:3000}],
+    4:[],
+    5:[{type:"self_per_adjacent",element:2,attr:2004,perUnit:4000}],
+  }
+},
+150210:{ // 引仙破道
+  maxLevel:5,
+  levels:{
+    1:[{type:"self_mult",pct:2000}],
+    2:[],
+    3:[{type:"self_mult",pct:3000}],
+    4:[],
+    5:[{type:"self_per_adjacent",element:2,attr:2004,perUnit:4000}],
+  }
+},
 150303:{ // 凌波惊鸿
   maxLevel:5,
   levels:{
@@ -1576,6 +1611,26 @@ const AWAKEN_DB={
     3:[{type:"global_form",form:8,pct:1500,excludeSelf:true}],
     4:[{type:"self_mult",pct:3000}],
     5:[{type:"global_element",element:3,pct:1500,excludeSelf:true}],
+  }
+},
+150309:{ // 断流绝响
+  maxLevel:5,
+  levels:{
+    1:[{type:"self_mult",pct:2000}],
+    2:[],
+    3:[{type:"self_mult",pct:3000}],
+    4:[],
+    5:[{type:"self_per_adjacent",element:3,attr:2004,perUnit:4000}],
+  }
+},
+150310:{ // 逆流河珠
+  maxLevel:5,
+  levels:{
+    1:[{type:"self_mult",pct:2000}],
+    2:[],
+    3:[{type:"self_mult",pct:3000}],
+    4:[],
+    5:[{type:"self_per_adjacent",element:3,attr:2004,perUnit:4000}],
   }
 },
 150403:{ // 燧火传薪
@@ -1639,11 +1694,23 @@ const AWAKEN_DB={
   }
 },
 150409:{ // 炎驹驰天
-  maxLevel:3,
+  maxLevel:5,
   levels:{
     1:[{type:"self_mult",pct:2000}],
     2:[],
     3:[{type:"self_mult",pct:3000}],
+    4:[],
+    5:[{type:"self_per_adjacent",element:4,attr:2004,perUnit:4000}],
+  }
+},
+150410:{ // 赤霄斩浪
+  maxLevel:5,
+  levels:{
+    1:[{type:"self_mult",pct:2000}],
+    2:[],
+    3:[{type:"self_mult",pct:3000}],
+    4:[],
+    5:[{type:"self_per_adjacent",element:4,attr:2004,perUnit:4000}],
   }
 },
 150503:{ // 灵獐啸岩
@@ -1706,6 +1773,26 @@ const AWAKEN_DB={
     5:[{type:"global_element",element:5,pct:1500,excludeSelf:true}],
   }
 },
+150509:{ // 萱花裂地
+  maxLevel:5,
+  levels:{
+    1:[{type:"self_mult",pct:2000}],
+    2:[],
+    3:[{type:"self_mult",pct:3000}],
+    4:[],
+    5:[{type:"self_per_adjacent",element:5,attr:2004,perUnit:4000}],
+  }
+},
+150510:{ // 石钟灵佑
+  maxLevel:5,
+  levels:{
+    1:[{type:"self_mult",pct:2000}],
+    2:[],
+    3:[{type:"self_mult",pct:3000}],
+    4:[],
+    5:[{type:"self_per_adjacent",element:5,attr:2004,perUnit:4000}],
+  }
+},
 150603:{ // 惊雷兽吼
   maxLevel:5,
   levels:{
@@ -1766,6 +1853,26 @@ const AWAKEN_DB={
     5:[{type:"global_element",element:6,pct:1500,excludeSelf:true}],
   }
 },
+150609:{ // 神谕裁罪
+  maxLevel:5,
+  levels:{
+    1:[{type:"self_mult",pct:2000}],
+    2:[],
+    3:[{type:"self_mult",pct:3000}],
+    4:[],
+    5:[{type:"self_per_adjacent",element:6,attr:2004,perUnit:4000}],
+  }
+},
+150610:{ // 妙音止戈
+  maxLevel:5,
+  levels:{
+    1:[{type:"self_mult",pct:2000}],
+    2:[],
+    3:[{type:"self_mult",pct:3000}],
+    4:[],
+    5:[{type:"self_per_adjacent",element:6,attr:2004,perUnit:4000}],
+  }
+},
 150703:{ // 煞魔血叉
   maxLevel:5,
   levels:{
@@ -1824,6 +1931,26 @@ const AWAKEN_DB={
     3:[{type:"global_form",form:9,pct:1500,excludeSelf:true}],
     4:[{type:"self_mult",pct:3000}],
     5:[{type:"global_element",element:7,pct:1500,excludeSelf:true}],
+  }
+},
+150709:{ // 恶鬼喋血
+  maxLevel:5,
+  levels:{
+    1:[{type:"self_mult",pct:2000}],
+    2:[],
+    3:[{type:"self_mult",pct:3000}],
+    4:[],
+    5:[{type:"self_per_adjacent",element:7,attr:2004,perUnit:4000}],
+  }
+},
+150710:{ // 花妖魅匕
+  maxLevel:5,
+  levels:{
+    1:[{type:"self_mult",pct:2000}],
+    2:[],
+    3:[{type:"self_mult",pct:3000}],
+    4:[],
+    5:[{type:"self_per_adjacent",element:7,attr:2004,perUnit:4000}],
   }
 },
 150803:{ // 天骄伟冠
@@ -1887,11 +2014,23 @@ const AWAKEN_DB={
   }
 },
 150809:{ // 叱咤玉革
-  maxLevel:3,
+  maxLevel:5,
   levels:{
     1:[{type:"self_mult",pct:2000}],
     2:[],
     3:[{type:"self_mult",pct:3000}],
+    4:[],
+    5:[{type:"self_per_adjacent",element:8,attr:2004,perUnit:4000}],
+  }
+},
+150810:{ // 叱咤玉锤
+  maxLevel:5,
+  levels:{
+    1:[{type:"self_mult",pct:2000}],
+    2:[],
+    3:[{type:"self_mult",pct:3000}],
+    4:[],
+    5:[{type:"self_per_adjacent",element:8,attr:2004,perUnit:4000}],
   }
 },
 250103:{ // 北斗天罡枪
@@ -2393,15 +2532,18 @@ function evaluate(pl,ctx,detail){
       const T=nb[h].filter(p=>((1<<pl[p].eq.element)&sk.mask)!==0);if(!T.length)continue;
       for(const bf of sk.buffs){const F=bf.value*T.length;add(bf.attr,F);
         if(detail)srcs.push({t:"self",skill:sk.name,attr:bf.attr,value:F,per:bf.value,n:T.length,names:T.map(p=>pl[p].eq.name)});}}
-    // 觉醒1：按相邻指定系数量给自身加属性（与 self-buff 同机制）
+    // 觉醒·按相邻指定系数量给自身加属性（与 self-buff 同机制）：遍历已解锁的每一档（觉1普遍为此型；蓝长老觉5亦为此型）
     const awLv=awakenMap[eq.id]??0,awData=AWAKEN_DB[eq.id];
-    if(awData&&awLv>=1&&awData.levels[1]){
-      for(const ef of awData.levels[1]){
-        if(ef.type!=="self_per_adjacent")continue;
-        const T=nb[h].filter(p=>pl[p].eq.element===ef.element);
-        if(!T.length)continue;
-        const F=ef.perUnit*T.length;add(ef.attr,F);
-        if(detail)srcs.push({t:"awaken1",skill:`觉醒1`,attr:ef.attr,value:F,per:ef.perUnit,n:T.length,names:T.map(p=>pl[p].eq.name)});
+    if(awData&&awLv>=1){
+      for(let lv=1;lv<=awLv;lv++){
+        const effs=awData.levels[lv];if(!effs)continue;
+        for(const ef of effs){
+          if(ef.type!=="self_per_adjacent")continue;
+          const T=nb[h].filter(p=>pl[p].eq.element===ef.element);
+          if(!T.length)continue;
+          const F=ef.perUnit*T.length;add(ef.attr,F);
+          if(detail)srcs.push({t:"awaken1",skill:`觉醒${lv}`,attr:ef.attr,value:F,per:ef.perUnit,n:T.length,names:T.map(p=>pl[p].eq.name)});
+        }
       }
     }
     for(const p of nb[h]){const neq=pl[p].eq;

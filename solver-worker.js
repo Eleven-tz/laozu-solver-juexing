@@ -36,15 +36,18 @@ function evaluate(pl,ctx,detail){
       const T=nb[h].filter(p=>((1<<pl[p].eq.element)&sk.mask)!==0);if(!T.length)continue;
       for(const bf of sk.buffs){const F=bf.value*T.length;add(bf.attr,F);
         if(detail)srcs.push({t:"self",skill:sk.name,attr:bf.attr,value:F,per:bf.value,n:T.length,names:T.map(p=>pl[p].eq.name)});}}
-    // 觉醒1：按相邻指定系数量给自身加属性（与 self-buff 同机制）
+    // 觉醒·按相邻指定系数量给自身加属性（与 self-buff 同机制）：遍历已解锁的每一档（觉1普遍为此型；蓝长老觉5亦为此型）
     const awLv=awakenMap[eq.id]??0,awData=AWAKEN_DB[eq.id];
-    if(awData&&awLv>=1&&awData.levels[1]){
-      for(const ef of awData.levels[1]){
-        if(ef.type!=="self_per_adjacent")continue;
-        const T=nb[h].filter(p=>pl[p].eq.element===ef.element);
-        if(!T.length)continue;
-        const F=ef.perUnit*T.length;add(ef.attr,F);
-        if(detail)srcs.push({t:"awaken1",skill:`觉醒1`,attr:ef.attr,value:F,per:ef.perUnit,n:T.length,names:T.map(p=>pl[p].eq.name)});
+    if(awData&&awLv>=1){
+      for(let lv=1;lv<=awLv;lv++){
+        const effs=awData.levels[lv];if(!effs)continue;
+        for(const ef of effs){
+          if(ef.type!=="self_per_adjacent")continue;
+          const T=nb[h].filter(p=>pl[p].eq.element===ef.element);
+          if(!T.length)continue;
+          const F=ef.perUnit*T.length;add(ef.attr,F);
+          if(detail)srcs.push({t:"awaken1",skill:`觉醒${lv}`,attr:ef.attr,value:F,per:ef.perUnit,n:T.length,names:T.map(p=>pl[p].eq.name)});
+        }
       }
     }
     for(const p of nb[h]){const neq=pl[p].eq;
